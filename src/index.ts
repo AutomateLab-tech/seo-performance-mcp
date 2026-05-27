@@ -189,6 +189,87 @@ server.registerTool(
   async (input) => wrap(() => quickWinsTool(input)),
 );
 
+// Prompts: canned multi-tool workflows. Discoverable in any MCP client
+// (Claude Desktop, Cursor, Continue, etc.) - no skill loader required.
+
+server.registerPrompt(
+  "audit_cohort",
+  {
+    title: "Audit a cohort of posts",
+    description: "Run cohort.report on posts >=90 days old, then generate refresh briefs for every URL whose verdict is refresh / expand / merge.",
+  },
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: [
+            "Run the seo-performance MCP cohort audit:",
+            "",
+            "1. Call `cohort.report` with `min_age_days=90`, `window=30`, `limit=20`.",
+            "2. For every row where verdict is one of refresh / expand / merge / double_down, call `posts.refresh_brief` on that URL.",
+            "3. Output a single markdown digest, sorted by verdict priority then confidence, with the brief inlined per URL.",
+            "4. At the end, recommend the top 3 URLs to act on this week.",
+          ].join("\n"),
+        },
+      },
+    ],
+  }),
+);
+
+server.registerPrompt(
+  "find_quick_wins",
+  {
+    title: "Find SERP quick wins",
+    description: "Pull pages at positions 5-15 with low CTR and propose query-verbatim title/H1 rewrites.",
+  },
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: [
+            "Find SERP quick wins via the seo-performance MCP:",
+            "",
+            "1. Call `gsc.quick_wins` with `window=90`, `min_position=5`, `max_position=15`, `min_impressions=50`.",
+            "2. Group by URL. For each URL with at least one query at 0% CTR, call `posts.snapshot` to confirm the top-query set.",
+            "3. For each URL, suggest a meta_title and H1 rewrite that incorporates the exact phrasing of the highest-impression query verbatim (under 60 chars for the SERP title).",
+            "4. Output a table: URL | top query | current position | current CTR | suggested meta_title.",
+          ].join("\n"),
+        },
+      },
+    ],
+  }),
+);
+
+server.registerPrompt(
+  "citation_loss_sweep",
+  {
+    title: "AI citation loss sweep",
+    description: "Find URLs that lost LLM citations and generate refresh briefs targeted at recovering them.",
+  },
+  () => ({
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: [
+            "Sweep for AI citation losses via the seo-performance MCP:",
+            "",
+            "1. Get a candidate URL list: either `posts.list` (limit 50) or an explicit `urls[]` you already have.",
+            "2. For each URL, call `posts.cite_loss`. Keep only URLs with at least one entry in `losses[]`.",
+            "3. For those URLs, call `posts.refresh_brief`.",
+            "4. In the digest, highlight the lost-citation queries and recommend exact H1/first-paragraph phrasing that mirrors each lost query.",
+          ].join("\n"),
+        },
+      },
+    ],
+  }),
+);
+
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);

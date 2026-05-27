@@ -107,6 +107,25 @@ To add a brand-new platform: nothing to build - just point `POSTS_SITEMAP_URL` a
 | `posts.cite_loss` | LLM citations that dropped off for a given URL. Needs `CITATION_INTELLIGENCE_URL`. |
 | `gsc.quick_wins` | `(page, query)` pairs at positions 5-15 with low CTR - fastest title-rewrite wins. |
 
+## Companion skill + Cursor rule
+
+Two thin routing files ship in the repo so the LLM in your client knows *when* to reach for these tools:
+
+- `skills/seo-performance/SKILL.md` - drop into `~/.claude/skills/seo-performance/` (or `.claude/skills/` per project) to auto-load in Claude Code.
+- `cursor/rules/seo-performance.mdc` - copy to `.cursor/rules/seo-performance.mdc` in any Cursor workspace.
+
+Both are optional. The MCP server works without them; they just shorten the "which tool do I call" round-trip.
+
+## MCP prompts
+
+The server exposes three prompts that bundle the playbook. Any MCP client (Claude Desktop, Claude Code, Cursor, Continue) can list and invoke them:
+
+| Prompt | What it runs |
+|---|---|
+| `audit_cohort` | `cohort.report` on posts >=90d, then `posts.refresh_brief` per refresh/expand/merge row. The weekly audit. |
+| `find_quick_wins` | `gsc.quick_wins` (positions 5-15) + per-URL `posts.snapshot`, then proposes verbatim-query meta_title rewrites. |
+| `citation_loss_sweep` | `posts.cite_loss` per URL, refresh_brief for any with losses, targeted H1/lead phrasing recommendations. |
+
 ## Verdict engine
 
 Deterministic, rule-based, traceable. Reason codes:

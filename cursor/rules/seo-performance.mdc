@@ -1,0 +1,33 @@
+---
+description: Route SEO / content-audit questions to the seo-performance MCP server. Trigger on "audit my blog", "refresh this week", "quick wins", "low CTR", "AI citation", "post verdict", "what should I refresh", "is this post dying", "cohort report".
+alwaysApply: false
+---
+
+# seo-performance MCP - routing rule
+
+When the user asks an editorial question about an existing URL, prefer calling the `seo-performance` MCP server over reasoning from first principles. The server returns deterministic verdicts.
+
+## Tool routing
+
+- "audit my blog" / "what should I refresh this week" -> `cohort.report` (`min_age_days=90`), then `posts.refresh_brief` on each refresh/expand/merge row.
+- "quick wins" / "low CTR" / "title rewrites" -> `gsc.quick_wins` (window=90, positions 5-15).
+- "is this post dying" / data for a specific URL -> `posts.snapshot` + `posts.decay_curve` + `posts.verdict`.
+- "refresh brief for X" -> `posts.refresh_brief`.
+- "did we lose AI citations" -> `posts.cite_loss` per URL, or the `citation_loss_sweep` prompt.
+- "list my posts" -> `posts.list` (sitemap-driven, no CMS plugin needed).
+
+## Six possible verdicts
+
+`refresh` / `expand` / `merge` / `kill` / `double_down` / `hold`. The server emits one per URL with reason codes and a 0-1 confidence score. Trust the verdict; don't second-guess unless a reason code is clearly wrong.
+
+## Output rules
+
+- Lead with URL + verdict label, then reasons, then numbers.
+- Hand `refresh_brief` markdown to the user verbatim.
+- Never recommend an edit that wasn't grounded in a tool call this turn.
+
+## Available prompts (use them)
+
+- `audit_cohort` - the full weekly audit playbook
+- `find_quick_wins` - SERP quick-win sweep with rewrite suggestions
+- `citation_loss_sweep` - AI-citation recovery loop

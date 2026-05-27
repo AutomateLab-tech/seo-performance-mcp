@@ -42,6 +42,8 @@
   },
   "files": [
     "dist",
+    "skills",
+    "cursor",
     "smithery.yaml",
     "README.md",
     "LICENSE"
