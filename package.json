@@ -8,7 +8,10 @@
   "homepage": "https://github.com/AutomateLab-tech/seo-performance-mcp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AutomateLab-tech/seo-performance-mcp.git"
+    "url": "git+https://github.com/AutomateLab-tech/seo-performance-mcp.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=20"
