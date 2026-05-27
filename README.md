@@ -107,14 +107,15 @@ To add a brand-new platform: nothing to build - just point `POSTS_SITEMAP_URL` a
 | `posts.cite_loss` | LLM citations that dropped off for a given URL. Needs `CITATION_INTELLIGENCE_URL`. |
 | `gsc.quick_wins` | `(page, query)` pairs at positions 5-15 with low CTR - fastest title-rewrite wins. |
 
-## Companion skill + Cursor rule
+## Companion skills + Cursor rule
 
-Two thin routing files ship in the repo so the LLM in your client knows *when* to reach for these tools:
+Three thin routing files ship in the repo so the LLM in your client knows *when* to reach for these tools:
 
-- `skills/seo-performance/SKILL.md` - drop into `~/.claude/skills/seo-performance/` (or `.claude/skills/` per project) to auto-load in Claude Code.
+- `skills/seo-performance/SKILL.md` - tool-routing skill. Drop into `~/.claude/skills/seo-performance/` (or `.claude/skills/` per project) to auto-load in Claude Code. Routes a single question to the right tool.
+- `skills/weekly-audit/SKILL.md` - one-shot weekly audit playbook. Composes `gsc.quick_wins` + `cohort.report` + `posts.cite_loss` into a deduped, cross-signal ranked digest with proposed edits per URL. Drop in alongside the routing skill.
 - `cursor/rules/seo-performance.mdc` - copy to `.cursor/rules/seo-performance.mdc` in any Cursor workspace.
 
-Both are optional. The MCP server works without them; they just shorten the "which tool do I call" round-trip.
+All optional. The MCP server works without them; they just shorten the "which tool do I call" round-trip.
 
 ## MCP prompts
 
