@@ -1,0 +1,49 @@
+startCommand:
+  type: stdio
+
+configSchema:
+  type: object
+  properties:
+    GSC_SERVICE_ACCOUNT_JSON:
+      type: string
+      description: Base64-encoded Google service account JSON with Search Console read access.
+    GSC_SITE_URL:
+      type: string
+      description: Search Console site URL (e.g. sc-domain:example.com or https://example.com/).
+    MATOMO_URL:
+      type: string
+      description: Matomo instance URL (e.g. https://example.com/analytics).
+    MATOMO_TOKEN:
+      type: string
+      description: Matomo auth token with view access.
+    MATOMO_SITE_ID:
+      type: string
+      description: Matomo idSite for the site to query.
+    GA4_PROPERTY_ID:
+      type: string
+      description: GA4 property ID (numeric, no G- prefix).
+    GA4_SERVICE_ACCOUNT_JSON:
+      type: string
+      description: Base64-encoded Google service account JSON with GA4 Data API access.
+    CLARITY_PROJECT_ID:
+      type: string
+      description: Microsoft Clarity project ID.
+    CLARITY_API_TOKEN:
+      type: string
+      description: Microsoft Clarity Data Export API token.
+    GHOST_ADMIN_API_URL:
+      type: string
+      description: Ghost Admin API base URL (e.g. https://example.com).
+    GHOST_ADMIN_API_KEY:
+      type: string
+      description: Ghost Admin API key in the form id:secret.
+    CITATION_INTELLIGENCE_URL:
+      type: string
+      description: Optional URL of a citation-intelligence MCP server to delegate AI-citation queries to.
+  required: []
+
+commandFunction: |-
+  () => ({
+    command: "npx",
+    args: ["-y", "@automatelab/seo-performance-mcp"]
+  })

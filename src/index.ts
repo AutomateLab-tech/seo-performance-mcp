@@ -1,0 +1,201 @@
+#!/usr/bin/env node
+// seo-performance MCP - entrypoint.
+// All logging goes to stderr. stdout is reserved for JSON-RPC transport.
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+import { listPostsTool, listPostsInputSchema } from "./tools/list-posts.js";
+import { snapshotTool, snapshotInputSchema } from "./tools/snapshot.js";
+import { decayCurveTool, decayCurveInputSchema } from "./tools/decay-curve.js";
+import { verdictTool, verdictInputSchema } from "./tools/verdict.js";
+import { refreshBriefTool, refreshBriefInputSchema } from "./tools/refresh-brief.js";
+import { cohortReportTool, cohortReportInputSchema } from "./tools/cohort-report.js";
+import { citeLossTool, citeLossInputSchema } from "./tools/cite-loss.js";
+import { quickWinsTool, quickWinsInputSchema } from "./tools/quick-wins.js";
+
+import {
+  listPostsOutputShape,
+  snapshotOutputShape,
+  decayCurveOutputShape,
+  verdictOutputShape,
+  refreshBriefOutputShape,
+  cohortReportOutputShape,
+  citeLossOutputShape,
+  quickWinsOutputShape,
+} from "./output-schemas.js";
+
+import type { ToolError } from "./types.js";
+
+const server = new McpServer({
+  name: "@automatelab/seo-performance-mcp",
+  version: "0.1.0",
+});
+
+type ToolResponse = {
+  content: [{ type: "text"; text: string }];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
+
+function toolError(err: ToolError): ToolResponse {
+  return {
+    content: [{ type: "text", text: JSON.stringify(err, null, 2) }],
+    isError: true,
+  };
+}
+
+function wrap<T>(handler: () => Promise<T>): Promise<ToolResponse> {
+  return handler()
+    .then((result): ToolResponse => ({
+      content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      structuredContent: result as unknown as Record<string, unknown>,
+    }))
+    .catch((err: unknown): ToolResponse => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[error]", message);
+      if (message.startsWith("Missing required env")) {
+        return toolError({ type: "config_missing", message });
+      }
+      return toolError({ type: "internal", message });
+    });
+}
+
+// Tool naming: dot-notation tree.
+//   posts.*    - per-post analysis (list / snapshot / decay / verdict / refresh_brief / cite_loss)
+//   cohort.*   - cross-post reports
+//   gsc.*      - direct GSC scans (quick_wins)
+
+server.registerTool(
+  "posts.list",
+  {
+    title: "List published posts",
+    description: [
+      "List published Ghost posts with metadata (slug, url, title, published_at, age_days, tags).",
+      "Read-only via Ghost Admin API. Filter by tag, minimum age, or published-after date.",
+      "When to use: discover which slugs are eligible for snapshot / verdict / cohort analysis.",
+    ].join("\n\n"),
+    inputSchema: listPostsInputSchema.shape,
+    outputSchema: listPostsOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async (input) => wrap(() => listPostsTool(input)),
+);
+
+server.registerTool(
+  "posts.snapshot",
+  {
+    title: "Unified per-URL snapshot",
+    description: [
+      "Pull a 30/60/90-day snapshot across every configured signal source for one post: GSC clicks/impressions/CTR/position + top queries, Matomo visits + dwell, GA4 pageviews, Clarity scroll/rage clicks, AI-citation counts.",
+      "Each source is best-effort: if its env vars are missing the field is omitted. Returns whatever is available.",
+      "Read-only. No third-party writes. Optionally persists to the local DuckDB cache when persist=true.",
+    ].join("\n\n"),
+    inputSchema: snapshotInputSchema.shape,
+    outputSchema: snapshotOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async (input) => wrap(() => snapshotTool(input)),
+);
+
+server.registerTool(
+  "posts.decay_curve",
+  {
+    title: "Weekly GSC decay curve",
+    description: [
+      "Bucket GSC clicks/impressions/avg-position into ~weekly windows for the last N weeks (default 12) and classify the trend: decay / plateau / growth.",
+      "Underpins the verdict engine's decay rules. Read-only GSC query.",
+    ].join("\n\n"),
+    inputSchema: decayCurveInputSchema.shape,
+    outputSchema: decayCurveOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async (input) => wrap(() => decayCurveTool(input)),
+);
+
+server.registerTool(
+  "posts.verdict",
+  {
+    title: "Verdict per post (refresh / expand / merge / kill / double_down / hold)",
+    description: [
+      "Run the rule-based verdict engine on a single post: combine snapshot + decay curve and emit a verdict with reason codes and a 0-1 confidence score.",
+      "Reason codes are deterministic. The mapping reasons -> verdict lives in src/verdict/rules.ts and can be inspected.",
+      "Reporting only - does NOT mutate the post. To act on the verdict, hand the brief to a writer or to an AI rewrite tool.",
+    ].join("\n\n"),
+    inputSchema: verdictInputSchema.shape,
+    outputSchema: verdictOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async (input) => wrap(() => verdictTool(input)),
+);
+
+server.registerTool(
+  "posts.refresh_brief",
+  {
+    title: "Refresh brief (markdown) per post",
+    description: [
+      "Produce a markdown brief for a human (or downstream LLM) editor: verdict + reasons + raw numbers + top queries + suggested actions.",
+      "Use this as the hand-off artefact when verdict is refresh / expand / merge / double_down.",
+    ].join("\n\n"),
+    inputSchema: refreshBriefInputSchema.shape,
+    outputSchema: refreshBriefOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async (input) => wrap(() => refreshBriefTool(input)),
+);
+
+server.registerTool(
+  "cohort.report",
+  {
+    title: "Cohort report across posts",
+    description: [
+      "Run the verdict engine across a cohort (filtered by tag and/or min-age) and return a ranked table sorted by verdict priority then confidence.",
+      "Practical use: 'which three posts should I refresh this week?' - the top three rows with verdict=refresh and highest confidence are the answer.",
+    ].join("\n\n"),
+    inputSchema: cohortReportInputSchema.shape,
+    outputSchema: cohortReportOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  async (input) => wrap(() => cohortReportTool(input)),
+);
+
+server.registerTool(
+  "posts.cite_loss",
+  {
+    title: "AI-citation losses per post",
+    description: [
+      "Return the list of LLMs that previously cited this post but no longer do, with the prior query and last-seen date. Optionally includes the URL that replaced ours.",
+      "Requires a configured citation-intelligence MCP endpoint (CITATION_INTELLIGENCE_URL). Otherwise returns an empty list.",
+    ].join("\n\n"),
+    inputSchema: citeLossInputSchema.shape,
+    outputSchema: citeLossOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async (input) => wrap(() => citeLossTool(input)),
+);
+
+server.registerTool(
+  "gsc.quick_wins",
+  {
+    title: "GSC quick wins (positions 5-15)",
+    description: [
+      "Scan GSC for (page, query) pairs sitting in positions 5-15 with non-trivial impressions and a CTR below their position-expected curve. These are the fastest title-rewrite wins.",
+      "Returns top results sorted by impressions desc. Does not touch Ghost - pure GSC pull.",
+    ].join("\n\n"),
+    inputSchema: quickWinsInputSchema.shape,
+    outputSchema: quickWinsOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async (input) => wrap(() => quickWinsTool(input)),
+);
+
+async function main(): Promise<void> {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("[seo-performance-mcp] ready on stdio");
+}
+
+main().catch((err) => {
+  console.error("[fatal]", err);
+  process.exit(1);
+});

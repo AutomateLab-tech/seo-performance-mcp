@@ -1,0 +1,59 @@
+{
+  "name": "@automatelab/seo-performance-mcp",
+  "version": "0.1.0",
+  "mcpName": "io.github.AutomateLab-tech/seo-performance-mcp",
+  "description": "Post-publish SEO performance MCP. Unifies Google Search Console, Matomo, GA4, Clarity, and AI-citation signals per URL and emits a verdict (refresh / expand / merge / kill / double_down / hold) per post with reason codes.",
+  "license": "MIT",
+  "author": "automatelab.tech",
+  "homepage": "https://github.com/AutomateLab-tech/seo-performance-mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AutomateLab-tech/seo-performance-mcp.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "bin": {
+    "seo-performance-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "duckdb-async": "1.2.0",
+    "googleapis": "144.0.0",
+    "undici": "7.25.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "tsx": "4.22.0",
+    "typescript": "5.7.3",
+    "vitest": "3.2.4"
+  },
+  "files": [
+    "dist",
+    "smithery.yaml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "seo",
+    "analytics",
+    "gsc",
+    "matomo",
+    "ga4",
+    "clarity",
+    "content-operations",
+    "ghost"
+  ]
+}
