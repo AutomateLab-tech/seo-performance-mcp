@@ -69,11 +69,11 @@ function wrap<T>(handler: () => Promise<T>): Promise<ToolResponse> {
 server.registerTool(
   "posts.list",
   {
-    title: "List published posts",
+    title: "List posts from any platform",
     description: [
-      "List published Ghost posts with metadata (slug, url, title, published_at, age_days, tags).",
-      "Read-only via Ghost Admin API. Filter by tag, minimum age, or published-after date.",
-      "When to use: discover which slugs are eligible for snapshot / verdict / cohort analysis.",
+      "Discover posts via an XML sitemap (POSTS_SITEMAP_URL or the sitemap_url arg), a JSON override list (POSTS_LIST), or - if configured - the Ghost Admin API. Pass an explicit urls[] to skip discovery entirely.",
+      "Returns metadata: url, title, published_at, age_days, tags. Filter by minimum age or published-after date.",
+      "When to use: discover which URLs are eligible for snapshot / verdict / cohort analysis. Works with any CMS that exposes a sitemap.",
     ].join("\n\n"),
     inputSchema: listPostsInputSchema.shape,
     outputSchema: listPostsOutputShape,
@@ -120,7 +120,7 @@ server.registerTool(
     description: [
       "Run the rule-based verdict engine on a single post: combine snapshot + decay curve and emit a verdict with reason codes and a 0-1 confidence score.",
       "Reason codes are deterministic. The mapping reasons -> verdict lives in src/verdict/rules.ts and can be inspected.",
-      "Reporting only - does NOT mutate the post. To act on the verdict, hand the brief to a writer or to an AI rewrite tool.",
+      "Reporting only - does NOT mutate anything. To act on the verdict, hand the brief to a writer or to an AI rewrite tool.",
     ].join("\n\n"),
     inputSchema: verdictInputSchema.shape,
     outputSchema: verdictOutputShape,
@@ -162,9 +162,9 @@ server.registerTool(
 server.registerTool(
   "posts.cite_loss",
   {
-    title: "AI-citation losses per post",
+    title: "AI-citation losses per URL",
     description: [
-      "Return the list of LLMs that previously cited this post but no longer do, with the prior query and last-seen date. Optionally includes the URL that replaced ours.",
+      "Return the list of LLMs that previously cited this URL but no longer do, with the prior query and last-seen date. Optionally includes the URL that replaced ours.",
       "Requires a configured citation-intelligence MCP endpoint (CITATION_INTELLIGENCE_URL). Otherwise returns an empty list.",
     ].join("\n\n"),
     inputSchema: citeLossInputSchema.shape,
@@ -180,7 +180,7 @@ server.registerTool(
     title: "GSC quick wins (positions 5-15)",
     description: [
       "Scan GSC for (page, query) pairs sitting in positions 5-15 with non-trivial impressions and a CTR below their position-expected curve. These are the fastest title-rewrite wins.",
-      "Returns top results sorted by impressions desc. Does not touch Ghost - pure GSC pull.",
+      "Returns top results sorted by impressions desc. Pure GSC pull - platform-agnostic.",
     ].join("\n\n"),
     inputSchema: quickWinsInputSchema.shape,
     outputSchema: quickWinsOutputShape,

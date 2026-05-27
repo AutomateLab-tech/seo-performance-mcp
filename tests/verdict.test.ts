@@ -34,7 +34,7 @@ function snap(partial: Partial<Snapshot["meta"]> & Partial<Snapshot["gsc"]>): Sn
 
 function flatDecay(): DecayCurve {
   const buckets = Array.from({ length: 12 }, (_, i) => bucket(12 - i, 10));
-  return { slug: "test", buckets, trend: "plateau", decay_pct: 0 };
+  return { url: "https://example.com/test/", buckets, trend: "plateau", decay_pct: 0 };
 }
 
 function decayingDecay(): DecayCurve {
@@ -43,7 +43,7 @@ function decayingDecay(): DecayCurve {
     ...Array.from({ length: 8 }, (_, i) => bucket(16 - i, 30)),
     ...Array.from({ length: 8 }, (_, i) => bucket(8 - i, 5)),
   ];
-  return { slug: "test", buckets, trend: "decay", decay_pct: -0.83 };
+  return { url: "https://example.com/test/", buckets, trend: "decay", decay_pct: -0.83 };
 }
 
 describe("decideVerdict", () => {

@@ -80,7 +80,7 @@ export const snapshotOutputShape = {
 };
 
 export const decayCurveOutputShape = {
-  slug: z.string(),
+  url: z.string(),
   buckets: z.array(
     z.object({
       week_start: z.string(),
@@ -94,7 +94,7 @@ export const decayCurveOutputShape = {
 };
 
 export const verdictOutputShape = {
-  slug: z.string(),
+  url: z.string(),
   verdict: z.enum(["refresh", "expand", "merge", "kill", "double_down", "hold"]),
   reasons: z.array(z.string()),
   confidence: z.number(),
@@ -107,7 +107,6 @@ export const refreshBriefOutputShape = { markdown: z.string() };
 export const cohortReportOutputShape = {
   rows: z.array(
     z.object({
-      slug: z.string(),
       url: z.string(),
       title: z.string(),
       age_days: z.number(),
@@ -122,7 +121,7 @@ export const cohortReportOutputShape = {
 };
 
 export const citeLossOutputShape = {
-  slug: z.string(),
+  url: z.string(),
   active: z.number(),
   losses: z.array(
     z.object({

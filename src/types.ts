@@ -8,7 +8,7 @@ export interface PostMeta {
   published_at: string;
   updated_at?: string;
   age_days: number;
-  status: "published" | "draft" | "scheduled";
+  status: string;
   tags: string[];
   word_count?: number;
 }
@@ -66,7 +66,7 @@ export interface DecayBucket {
 }
 
 export interface DecayCurve {
-  slug: string;
+  url: string;
   buckets: DecayBucket[];
   trend: "decay" | "plateau" | "growth";
   decay_pct: number;
@@ -96,7 +96,7 @@ export type ReasonCode =
   | "fresh_post_too_young";
 
 export interface Verdict {
-  slug: string;
+  url: string;
   verdict: VerdictKind;
   reasons: ReasonCode[];
   confidence: number;

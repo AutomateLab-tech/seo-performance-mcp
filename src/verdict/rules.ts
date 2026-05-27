@@ -45,7 +45,7 @@ export function decideVerdict(snap: Snapshot, decay: DecayCurve): Verdict {
     reasons.push("fresh_post_too_young");
     evidence["age_days"] = meta.age_days;
     return {
-      slug: meta.slug,
+      url: meta.url,
       verdict: "hold",
       reasons,
       confidence: 0.9,
@@ -130,7 +130,7 @@ export function decideVerdict(snap: Snapshot, decay: DecayCurve): Verdict {
   const verdict = mapReasonsToVerdict(reasons);
   const confidence = confidenceFor(reasons, snap, decay);
   return {
-    slug: meta.slug,
+    url: meta.url,
     verdict,
     reasons,
     confidence,

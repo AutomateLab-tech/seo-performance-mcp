@@ -17,44 +17,44 @@ async function ensure(): Promise<Database> {
   dbInstance = await Database.create(path);
   await dbInstance.run(`
     CREATE TABLE IF NOT EXISTS snapshots (
-      slug TEXT,
+      url TEXT,
       window_days INTEGER,
       taken_at TIMESTAMP DEFAULT now(),
       payload JSON,
-      PRIMARY KEY (slug, window_days, taken_at)
+      PRIMARY KEY (url, window_days, taken_at)
     );
     CREATE TABLE IF NOT EXISTS verdicts (
-      slug TEXT,
+      url TEXT,
       taken_at TIMESTAMP DEFAULT now(),
       verdict TEXT,
       reasons JSON,
       confidence DOUBLE,
-      PRIMARY KEY (slug, taken_at)
+      PRIMARY KEY (url, taken_at)
     );
   `);
   return dbInstance;
 }
 
-export async function saveSnapshot(slug: string, windowDays: number, payload: unknown): Promise<void> {
+export async function saveSnapshot(url: string, windowDays: number, payload: unknown): Promise<void> {
   const db = await ensure();
   await db.run(
-    "INSERT INTO snapshots (slug, window_days, payload) VALUES (?, ?, ?)",
-    slug,
+    "INSERT INTO snapshots (url, window_days, payload) VALUES (?, ?, ?)",
+    url,
     windowDays,
     JSON.stringify(payload),
   );
 }
 
 export async function saveVerdict(
-  slug: string,
+  url: string,
   verdict: string,
   reasons: string[],
   confidence: number,
 ): Promise<void> {
   const db = await ensure();
   await db.run(
-    "INSERT INTO verdicts (slug, verdict, reasons, confidence) VALUES (?, ?, ?, ?)",
-    slug,
+    "INSERT INTO verdicts (url, verdict, reasons, confidence) VALUES (?, ?, ?, ?)",
+    url,
     verdict,
     JSON.stringify(reasons),
     confidence,

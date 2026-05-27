@@ -29,6 +29,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "duckdb-async": "1.2.0",
+    "fast-xml-parser": "4.5.1",
     "googleapis": "144.0.0",
     "undici": "7.25.0",
     "zod": "3.25.76"

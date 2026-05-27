@@ -1,11 +1,16 @@
 import { z } from "zod";
-import { listPosts } from "../adapters/ghost.js";
+import { listPosts } from "../adapters/posts.js";
 import { buildSnapshot, buildDecayCurve } from "../store/ingest.js";
 import { decideVerdict } from "../verdict/rules.js";
 
 export const cohortReportInputSchema = z.object({
+  urls: z.array(z.string().url()).optional().describe(
+    "Explicit list of post URLs to include. Overrides sitemap discovery.",
+  ),
+  sitemap_url: z.string().url().optional().describe(
+    "Sitemap URL to enumerate the cohort. Falls back to POSTS_SITEMAP_URL env var.",
+  ),
   window: z.union([z.literal(30), z.literal(60), z.literal(90)]).optional().default(30),
-  tag: z.string().optional(),
   min_age_days: z.number().int().min(0).optional().default(90),
   limit: z.number().int().min(1).max(50).optional().default(20),
 });
@@ -13,7 +18,6 @@ export const cohortReportInputSchema = z.object({
 export type CohortReportInput = z.infer<typeof cohortReportInputSchema>;
 
 export interface CohortRow {
-  slug: string;
   url: string;
   title: string;
   age_days: number;
@@ -26,25 +30,31 @@ export interface CohortRow {
 }
 
 export async function cohortReportTool(input: CohortReportInput): Promise<{ rows: CohortRow[] }> {
-  const posts = await listPosts({
-    tag: input.tag,
-    minAgeDays: input.min_age_days,
-    limit: input.limit,
-  });
+  let urls: string[];
+
+  if (input.urls && input.urls.length > 0) {
+    urls = input.urls;
+  } else {
+    const posts = await listPosts({
+      sitemapUrl: input.sitemap_url,
+      minAgeDays: input.min_age_days,
+      limit: input.limit,
+    });
+    urls = posts.map((p) => p.url);
+  }
 
   const rows: CohortRow[] = [];
-  for (const post of posts) {
+  for (const url of urls) {
     try {
       const [snap, decay] = await Promise.all([
-        buildSnapshot(post.slug, input.window),
-        buildDecayCurve(post.slug, 12),
+        buildSnapshot(url, input.window),
+        buildDecayCurve(url, 12),
       ]);
       const v = decideVerdict(snap, decay);
       rows.push({
-        slug: post.slug,
-        url: post.url,
-        title: post.title,
-        age_days: post.age_days,
+        url: snap.meta.url,
+        title: snap.meta.title,
+        age_days: snap.meta.age_days,
         clicks: snap.gsc.clicks,
         impressions: snap.gsc.impressions,
         position: round(snap.gsc.position, 1),
@@ -53,7 +63,7 @@ export async function cohortReportTool(input: CohortReportInput): Promise<{ rows
         reasons: v.reasons,
       });
     } catch {
-      // Skip posts we can't snapshot; the report should still finish.
+      // Skip URLs we can't snapshot; the report should still finish.
     }
   }
 

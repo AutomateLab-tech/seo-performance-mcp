@@ -4,7 +4,7 @@ import { decideVerdict } from "../verdict/rules.js";
 import { REASON_STRINGS } from "../verdict/reasons.js";
 
 export const refreshBriefInputSchema = z.object({
-  slug: z.string().min(1),
+  url: z.string().url().describe("Canonical URL of the post."),
   window: z.union([z.literal(30), z.literal(60), z.literal(90)]).optional().default(30),
 });
 
@@ -12,8 +12,8 @@ export type RefreshBriefInput = z.infer<typeof refreshBriefInputSchema>;
 
 export async function refreshBriefTool(input: RefreshBriefInput): Promise<{ markdown: string }> {
   const [snap, decay] = await Promise.all([
-    buildSnapshot(input.slug, input.window),
-    buildDecayCurve(input.slug, 12),
+    buildSnapshot(input.url, input.window),
+    buildDecayCurve(input.url, 12),
   ]);
   const v = decideVerdict(snap, decay);
 
@@ -21,7 +21,6 @@ export async function refreshBriefTool(input: RefreshBriefInput): Promise<{ mark
   lines.push(`# Refresh brief: ${snap.meta.title}`);
   lines.push("");
   lines.push(`- URL: ${snap.meta.url}`);
-  lines.push(`- Slug: \`${snap.meta.slug}\``);
   lines.push(`- Age: ${snap.meta.age_days} days`);
   lines.push(`- Verdict: **${v.verdict}** (confidence ${v.confidence})`);
   lines.push("");
@@ -71,11 +70,11 @@ function suggestActions(verdict: string, reasons: string[]): string[] {
   const out: string[] = [];
   if (verdict === "refresh") {
     out.push("Rewrite the title and meta description; lead with the strongest top query.");
-    out.push("Update any stat older than 12 months; add a 2026 reference.");
+    out.push("Update any stat older than 12 months; add a current-year reference.");
     out.push("Add an FAQ section answering the top 3 GSC queries verbatim.");
   } else if (verdict === "expand") {
     out.push("Add a sub-section per top query that is not yet covered.");
-    out.push("Embed one diagram or table; increase scannability.");
+    out.push("Embed one diagram or table to increase scannability.");
   } else if (verdict === "merge") {
     out.push("Identify the cannibalising URL; 301 the weaker post into the stronger one.");
   } else if (verdict === "double_down") {

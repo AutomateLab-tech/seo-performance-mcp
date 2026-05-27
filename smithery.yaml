@@ -31,12 +31,18 @@ configSchema:
     CLARITY_API_TOKEN:
       type: string
       description: Microsoft Clarity Data Export API token.
+    POSTS_SITEMAP_URL:
+      type: string
+      description: XML sitemap URL used to enumerate posts. The primary platform-agnostic discovery path.
+    POSTS_LIST:
+      type: string
+      description: Optional JSON array of {url, title?, published_at?, tags?, word_count?} overriding sitemap discovery.
     GHOST_ADMIN_API_URL:
       type: string
-      description: Ghost Admin API base URL (e.g. https://example.com).
+      description: Optional. Ghost Admin API base URL. When set together with GHOST_ADMIN_API_KEY, Ghost is used as a richer metadata source.
     GHOST_ADMIN_API_KEY:
       type: string
-      description: Ghost Admin API key in the form id:secret.
+      description: Optional. Ghost Admin API key in the form id:secret. Pair with GHOST_ADMIN_API_URL.
     CITATION_INTELLIGENCE_URL:
       type: string
       description: Optional URL of a citation-intelligence MCP server to delegate AI-citation queries to.

@@ -6,7 +6,7 @@ import { fetchMatomoMetrics } from "../adapters/matomo.js";
 import { fetchGa4Metrics } from "../adapters/ga4.js";
 import { fetchClarityMetrics } from "../adapters/clarity.js";
 import { fetchCitationMetrics } from "../adapters/citation.js";
-import { getPostBySlug } from "../adapters/ghost.js";
+import { getPostMeta } from "../adapters/posts.js";
 import type { Snapshot, DecayCurve, PostMeta } from "../types.js";
 
 function pathFrom(url: string): string {
@@ -25,19 +25,16 @@ async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
   }
 }
 
-export async function buildSnapshot(slug: string, windowDays: 30 | 60 | 90): Promise<Snapshot> {
-  const meta = await getPostBySlug(slug);
-  if (!meta) {
-    throw new Error(`No post with slug ${slug}`);
-  }
-  const path = pathFrom(meta.url);
+export async function buildSnapshot(url: string, windowDays: 30 | 60 | 90): Promise<Snapshot> {
+  const meta = await getPostMeta(url);
+  const path = pathFrom(url);
 
   const [gsc, matomo, ga4, clarity, citations] = await Promise.all([
-    safe(() => fetchGscMetrics({ url: meta.url, window: windowDays })),
-    safe(() => fetchMatomoMetrics(meta.url, windowDays)),
+    safe(() => fetchGscMetrics({ url, window: windowDays })),
+    safe(() => fetchMatomoMetrics(url, windowDays)),
     safe(() => fetchGa4Metrics(path, windowDays)),
     safe(() => fetchClarityMetrics(path, windowDays)),
-    safe(() => fetchCitationMetrics(meta.url)),
+    safe(() => fetchCitationMetrics(url)),
   ]);
 
   return {
@@ -51,16 +48,14 @@ export async function buildSnapshot(slug: string, windowDays: 30 | 60 | 90): Pro
   };
 }
 
-export async function buildDecayCurve(slug: string, weeks = 12): Promise<DecayCurve> {
-  const meta = await getPostBySlug(slug);
-  if (!meta) throw new Error(`No post with slug ${slug}`);
-  const buckets = await fetchGscWeekly(meta.url, weeks);
+export async function buildDecayCurve(url: string, weeks = 12): Promise<DecayCurve> {
+  const buckets = await fetchGscWeekly(url, weeks);
   const decay30 = decayPct(buckets, 4);
   let trend: DecayCurve["trend"] = "plateau";
   if (decay30 < -0.15) trend = "decay";
   else if (decay30 > 0.15) trend = "growth";
   return {
-    slug,
+    url,
     buckets,
     trend,
     decay_pct: round(decay30, 3),
