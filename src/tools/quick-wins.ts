@@ -3,8 +3,10 @@
 // (no Ghost dependency) so it can also surface non-Ghost URLs on the same property.
 
 import { z } from "zod";
+import { readFileSync } from "node:fs";
 import { google } from "googleapis";
-import { decodeJsonEnv, requireEnv } from "../config.js";
+import { JWT, UserRefreshClient } from "google-auth-library";
+import { decodeJsonEnv, getEnv, requireEnv } from "../config.js";
 
 export const quickWinsInputSchema = z.object({
   min_position: z.number().min(1).optional().default(5),
@@ -27,14 +29,28 @@ export interface QuickWin {
 
 export async function quickWinsTool(input: QuickWinsInput): Promise<{ wins: QuickWin[] }> {
   const siteUrl = requireEnv("GSC_SITE_URL");
-  const creds = decodeJsonEnv<{ client_email: string; private_key: string }>(
-    "GSC_SERVICE_ACCOUNT_JSON",
-  );
-  const auth = new google.auth.JWT({
-    email: creds.client_email,
-    key: creds.private_key,
-    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-  });
+  const scopes = ["https://www.googleapis.com/auth/webmasters.readonly"];
+  let auth: JWT | UserRefreshClient;
+  if (getEnv("GSC_SERVICE_ACCOUNT_JSON")) {
+    const creds = decodeJsonEnv<{ client_email: string; private_key: string }>("GSC_SERVICE_ACCOUNT_JSON");
+    auth = new JWT({ email: creds.client_email, key: creds.private_key, scopes });
+  } else {
+    const path = requireEnv("GOOGLE_APPLICATION_CREDENTIALS");
+    const parsed = JSON.parse(readFileSync(path, "utf-8")) as Record<string, unknown>;
+    if (parsed.type === "authorized_user") {
+      auth = new UserRefreshClient(
+        parsed.client_id as string,
+        parsed.client_secret as string,
+        parsed.refresh_token as string,
+      );
+    } else {
+      auth = new JWT({
+        email: parsed.client_email as string,
+        key: parsed.private_key as string,
+        scopes,
+      });
+    }
+  }
   const sc = google.searchconsole({ version: "v1", auth });
 
   const startDate = daysAgo(input.window);

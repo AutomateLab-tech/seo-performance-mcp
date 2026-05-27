@@ -1,25 +1,55 @@
 // Google Search Console adapter via the searchconsole/v1 API.
-// Auth: service account JSON in GSC_SERVICE_ACCOUNT_JSON (raw or base64).
+// Auth (priority order):
+//   1. GSC_SERVICE_ACCOUNT_JSON  - service account JSON (raw or base64)
+//   2. GOOGLE_APPLICATION_CREDENTIALS - path to a JSON file (service account or authorized_user)
 // Site: GSC_SITE_URL (sc-domain:example.com or https://example.com/).
 
+import { readFileSync } from "node:fs";
 import { google, type searchconsole_v1 } from "googleapis";
-import { decodeJsonEnv, requireEnv } from "../config.js";
+import { JWT, UserRefreshClient } from "google-auth-library";
+import { decodeJsonEnv, getEnv, requireEnv } from "../config.js";
 import type { GscMetrics } from "../types.js";
 
 let cached: searchconsole_v1.Searchconsole | null = null;
 
 function client(): searchconsole_v1.Searchconsole {
   if (cached) return cached;
-  const creds = decodeJsonEnv<{ client_email: string; private_key: string }>(
-    "GSC_SERVICE_ACCOUNT_JSON",
-  );
-  const auth = new google.auth.JWT({
-    email: creds.client_email,
-    key: creds.private_key,
-    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-  });
-  cached = google.searchconsole({ version: "v1", auth });
+  cached = google.searchconsole({ version: "v1", auth: buildAuth() });
   return cached;
+}
+
+function buildAuth(): JWT | UserRefreshClient {
+  const scopes = ["https://www.googleapis.com/auth/webmasters.readonly"];
+
+  if (getEnv("GSC_SERVICE_ACCOUNT_JSON")) {
+    const creds = decodeJsonEnv<{ client_email: string; private_key: string }>(
+      "GSC_SERVICE_ACCOUNT_JSON",
+    );
+    return new JWT({ email: creds.client_email, key: creds.private_key, scopes });
+  }
+
+  const path = getEnv("GOOGLE_APPLICATION_CREDENTIALS");
+  if (path) {
+    const text = readFileSync(path, "utf-8");
+    const parsed = JSON.parse(text) as Record<string, unknown>;
+    if (parsed.type === "authorized_user") {
+      return new UserRefreshClient(
+        parsed.client_id as string,
+        parsed.client_secret as string,
+        parsed.refresh_token as string,
+      );
+    }
+    if (parsed.type === "service_account" || parsed.client_email) {
+      return new JWT({
+        email: parsed.client_email as string,
+        key: parsed.private_key as string,
+        scopes,
+      });
+    }
+    throw new Error(`Unrecognised credential type in ${path}`);
+  }
+
+  throw new Error("Missing GSC auth: set GSC_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS");
 }
 
 function daysAgo(n: number): string {
