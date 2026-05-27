@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { google, type searchconsole_v1 } from "googleapis";
 import { JWT, UserRefreshClient } from "google-auth-library";
 import { decodeJsonEnv, getEnv, requireEnv } from "../config.js";
-import type { GscMetrics } from "../types.js";
+import type { GscMetrics, CannibalizationHit } from "../types.js";
 
 let cached: searchconsole_v1.Searchconsole | null = null;
 
@@ -140,20 +140,35 @@ export async function fetchGscWeekly(
     },
   });
 
-  const byDate = new Map<string, { clicks: number; impressions: number; position: number; n: number }>();
-  for (const row of res.data.rows ?? []) {
-    const date = String(row.keys?.[0] ?? "");
-    if (!date) continue;
-    const weekStart = date.slice(0, 8) + String(Math.floor((parseInt(date.slice(8, 10), 10) - 1) / 7) * 7 + 1).padStart(2, "0");
-    const bucket = byDate.get(weekStart) ?? { clicks: 0, impressions: 0, position: 0, n: 0 };
-    bucket.clicks += row.clicks ?? 0;
-    bucket.impressions += row.impressions ?? 0;
-    bucket.position += row.position ?? 0;
-    bucket.n += 1;
-    byDate.set(weekStart, bucket);
+  const rows = (res.data.rows ?? [])
+    .map((r) => ({
+      date: String(r.keys?.[0] ?? ""),
+      clicks: r.clicks ?? 0,
+      impressions: r.impressions ?? 0,
+      position: r.position ?? 0,
+    }))
+    .filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (rows.length === 0) return [];
+
+  const firstMs = Date.parse(rows[0].date + "T00:00:00Z");
+  const buckets = new Map<string, { clicks: number; impressions: number; position: number; n: number }>();
+  for (const r of rows) {
+    const ms = Date.parse(r.date + "T00:00:00Z");
+    const dayOffset = Math.floor((ms - firstMs) / 86_400_000);
+    const weekIdx = Math.floor(dayOffset / 7);
+    const weekStartMs = firstMs + weekIdx * 7 * 86_400_000;
+    const key = new Date(weekStartMs).toISOString().slice(0, 10);
+    const b = buckets.get(key) ?? { clicks: 0, impressions: 0, position: 0, n: 0 };
+    b.clicks += r.clicks;
+    b.impressions += r.impressions;
+    b.position += r.position;
+    b.n += 1;
+    buckets.set(key, b);
   }
 
-  return Array.from(byDate.entries())
+  return Array.from(buckets.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([week_start, b]) => ({
       week_start,
@@ -161,4 +176,114 @@ export async function fetchGscWeekly(
       impressions: b.impressions,
       position: b.n > 0 ? b.position / b.n : 0,
     }));
+}
+
+let ctrCurveCache: { curve: number[]; at: number } | null = null;
+const CTR_CURVE_TTL_MS = 24 * 60 * 60 * 1000;
+const CTR_CURVE_MAX_POSITION = 30;
+
+export async function fetchSiteCtrCurve(): Promise<number[] | null> {
+  if (ctrCurveCache && Date.now() - ctrCurveCache.at < CTR_CURVE_TTL_MS) {
+    return ctrCurveCache.curve;
+  }
+  const siteUrl = requireEnv("GSC_SITE_URL");
+  const sc = client();
+  const startDate = daysAgo(90);
+  const endDate = daysAgo(1);
+
+  const res = await sc.searchanalytics.query({
+    siteUrl,
+    requestBody: {
+      startDate,
+      endDate,
+      dimensions: ["query", "page"],
+      rowLimit: 25000,
+    },
+  });
+
+  const bins = Array.from({ length: CTR_CURVE_MAX_POSITION + 1 }, () => ({
+    clicks: 0,
+    impressions: 0,
+  }));
+  for (const row of res.data.rows ?? []) {
+    const pos = Math.round(row.position ?? 0);
+    if (pos < 1 || pos > CTR_CURVE_MAX_POSITION) continue;
+    bins[pos].clicks += row.clicks ?? 0;
+    bins[pos].impressions += row.impressions ?? 0;
+  }
+
+  const minSampleImpr = 100;
+  const curve = bins.map((b) => (b.impressions >= minSampleImpr ? b.clicks / b.impressions : NaN));
+  const validCount = curve.filter((c) => !Number.isNaN(c)).length;
+  if (validCount < 5) return null;
+
+  for (let i = 0; i < curve.length; i++) {
+    if (!Number.isNaN(curve[i])) continue;
+    let prev = -1;
+    let next = -1;
+    for (let j = i - 1; j >= 0; j--) {
+      if (!Number.isNaN(curve[j])) {
+        prev = j;
+        break;
+      }
+    }
+    for (let j = i + 1; j < curve.length; j++) {
+      if (!Number.isNaN(curve[j])) {
+        next = j;
+        break;
+      }
+    }
+    if (prev >= 0 && next >= 0) curve[i] = (curve[prev] + curve[next]) / 2;
+    else if (prev >= 0) curve[i] = curve[prev];
+    else if (next >= 0) curve[i] = curve[next];
+    else curve[i] = 0;
+  }
+
+  ctrCurveCache = { curve, at: Date.now() };
+  return curve;
+}
+
+export async function detectCannibalization(
+  url: string,
+  topQueries: string[],
+  windowDays: number,
+): Promise<CannibalizationHit[]> {
+  if (topQueries.length === 0) return [];
+  const siteUrl = requireEnv("GSC_SITE_URL");
+  const sc = client();
+  const startDate = daysAgo(windowDays);
+  const endDate = daysAgo(1);
+
+  const queries = topQueries.slice(0, 5);
+  const filters = queries.map((q) => ({
+    dimension: "query",
+    operator: "equals",
+    expression: q,
+  }));
+
+  const res = await sc.searchanalytics.query({
+    siteUrl,
+    requestBody: {
+      startDate,
+      endDate,
+      dimensions: ["query", "page"],
+      dimensionFilterGroups: [{ groupType: "or", filters }],
+      rowLimit: 500,
+    },
+  });
+
+  const competing = new Map<string, Set<string>>();
+  for (const row of res.data.rows ?? []) {
+    const q = String(row.keys?.[0] ?? "");
+    const p = String(row.keys?.[1] ?? "");
+    if (!q || !p || p === url) continue;
+    if ((row.impressions ?? 0) < 10) continue;
+    const set = competing.get(q) ?? new Set<string>();
+    set.add(p);
+    competing.set(q, set);
+  }
+
+  return Array.from(competing.entries())
+    .filter(([, urls]) => urls.size > 0)
+    .map(([query, urls]) => ({ query, competing_urls: Array.from(urls) }));
 }

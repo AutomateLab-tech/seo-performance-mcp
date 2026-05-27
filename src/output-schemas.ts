@@ -12,6 +12,8 @@ export const postMetaShape = {
   age_days: z.number(),
   status: z.string(),
   tags: z.array(z.string()),
+  headings: z.array(z.string()).optional(),
+  excerpt: z.string().optional(),
 };
 
 export const listPostsOutputShape = {
@@ -76,6 +78,14 @@ export const snapshotOutputShape = {
         }),
       ),
     })
+    .optional(),
+  cannibalization: z
+    .array(
+      z.object({
+        query: z.string(),
+        competing_urls: z.array(z.string()),
+      }),
+    )
     .optional(),
 };
 

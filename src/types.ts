@@ -11,6 +11,8 @@ export interface PostMeta {
   status: string;
   tags: string[];
   word_count?: number;
+  headings?: string[];
+  excerpt?: string;
 }
 
 export interface GscMetrics {
@@ -43,6 +45,11 @@ export interface CitationMetrics {
   llms: Array<{ llm: string; query: string; last_seen: string; replaced_by_url?: string }>;
 }
 
+export interface CannibalizationHit {
+  query: string;
+  competing_urls: string[];
+}
+
 export interface Snapshot {
   meta: PostMeta;
   window_days: 30 | 60 | 90;
@@ -51,6 +58,7 @@ export interface Snapshot {
   ga4?: VisitMetrics;
   clarity?: BehaviorMetrics;
   citations?: CitationMetrics;
+  cannibalization?: CannibalizationHit[];
   baseline?: {
     clicks: number;
     impressions: number;

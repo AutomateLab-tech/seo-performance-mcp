@@ -1,7 +1,11 @@
 // High-level orchestration: fetch from every adapter (best-effort) and assemble a Snapshot.
 // Adapters that fail config-missing are simply skipped; their fields are left undefined.
 
-import { fetchGscMetrics, fetchGscWeekly } from "../adapters/gsc.js";
+import {
+  fetchGscMetrics,
+  fetchGscWeekly,
+  detectCannibalization,
+} from "../adapters/gsc.js";
 import { fetchMatomoMetrics } from "../adapters/matomo.js";
 import { fetchGa4Metrics } from "../adapters/ga4.js";
 import { fetchClarityMetrics } from "../adapters/clarity.js";
@@ -37,6 +41,11 @@ export async function buildSnapshot(url: string, windowDays: 30 | 60 | 90): Prom
     safe(() => fetchCitationMetrics(url)),
   ]);
 
+  const topQueryStrings = (gsc?.top_queries ?? []).map((q) => q.query).filter(Boolean);
+  const cannibalization = await safe(() =>
+    detectCannibalization(url, topQueryStrings, windowDays),
+  );
+
   return {
     meta,
     window_days: windowDays,
@@ -45,6 +54,7 @@ export async function buildSnapshot(url: string, windowDays: 30 | 60 | 90): Prom
     ga4,
     clarity,
     citations,
+    cannibalization: cannibalization && cannibalization.length > 0 ? cannibalization : undefined,
   };
 }
 

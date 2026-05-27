@@ -21,6 +21,8 @@ export interface PostListEntry {
   updated_at?: string;
   tags?: string[];
   word_count?: number;
+  headings?: string[];
+  excerpt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,13 +30,26 @@ export interface PostListEntry {
 
 export async function getPostMeta(url: string): Promise<PostMeta> {
   const override = postsFromEnv().find((p) => normalizeUrl(p.url) === normalizeUrl(url));
+  let meta: PostMeta;
   if (override?.title && override?.published_at) {
-    return buildMeta({ ...override, url });
+    meta = buildMeta({ ...override, url });
+  } else {
+    const fromGhost = await fetchMetaFromGhost(url);
+    if (fromGhost) {
+      meta = fromGhost;
+    } else {
+      const fromHtml = await fetchMetaFromHtml(url);
+      meta = buildMeta({ ...override, ...fromHtml, url });
+    }
   }
-  const fromGhost = await fetchMetaFromGhost(url);
-  if (fromGhost) return fromGhost;
-  const fromHtml = await fetchMetaFromHtml(url);
-  return buildMeta({ ...override, ...fromHtml, url });
+
+  if (!meta.headings || !meta.excerpt) {
+    const enrichment = await fetchMetaFromHtml(url);
+    if (!meta.headings && enrichment.headings) meta.headings = enrichment.headings;
+    if (!meta.excerpt && enrichment.excerpt) meta.excerpt = enrichment.excerpt;
+  }
+
+  return meta;
 }
 
 async function fetchMetaFromGhost(url: string): Promise<PostMeta | undefined> {
@@ -117,6 +132,8 @@ function buildMeta(p: PostListEntry): PostMeta {
     status: "published",
     tags: p.tags ?? [],
     word_count: p.word_count,
+    headings: p.headings,
+    excerpt: p.excerpt,
   };
 }
 
@@ -132,6 +149,8 @@ async function fetchMetaFromHtml(url: string): Promise<Partial<PostListEntry>> {
       published_at: ogTag(html, "article:published_time") ?? jsonLdDate(html, "datePublished"),
       updated_at: ogTag(html, "article:modified_time") ?? jsonLdDate(html, "dateModified"),
       tags: ogTags(html, "article:tag"),
+      headings: extractHeadings(html),
+      excerpt: extractBodyExcerpt(html),
     };
   } catch {
     return {};
@@ -212,6 +231,34 @@ function ogTags(html: string, property: string): string[] {
 
 function htmlTitle(html: string): string | undefined {
   return html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
+}
+
+function extractHeadings(html: string): string[] {
+  const re = /<h([12])[^>]*>([\s\S]*?)<\/h\1>/gi;
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const text = m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+    if (text) out.push(text);
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+
+function extractBodyExcerpt(html: string, maxChars = 4000): string {
+  let body = html;
+  const article = html.match(/<article\b[\s\S]*?>([\s\S]*?)<\/article>/i);
+  if (article) {
+    body = article[1];
+  } else {
+    const main = html.match(/<main\b[\s\S]*?>([\s\S]*?)<\/main>/i);
+    if (main) body = main[1];
+  }
+  body = body.replace(/<script[\s\S]*?<\/script>/gi, "");
+  body = body.replace(/<style[\s\S]*?<\/style>/gi, "");
+  body = body.replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+  const text = body.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return text.slice(0, maxChars);
 }
 
 function jsonLdDate(html: string, key: string): string | undefined {

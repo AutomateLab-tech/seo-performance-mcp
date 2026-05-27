@@ -2,6 +2,7 @@ import { z } from "zod";
 import { listPosts } from "../adapters/posts.js";
 import { buildSnapshot, buildDecayCurve } from "../store/ingest.js";
 import { decideVerdict } from "../verdict/rules.js";
+import { fetchSiteCtrCurve } from "../adapters/gsc.js";
 
 export const cohortReportInputSchema = z.object({
   urls: z.array(z.string().url()).optional().describe(
@@ -43,6 +44,8 @@ export async function cohortReportTool(input: CohortReportInput): Promise<{ rows
     urls = posts.map((p) => p.url);
   }
 
+  const ctrCurve = await fetchSiteCtrCurve().catch(() => null);
+
   const rows: CohortRow[] = [];
   for (const url of urls) {
     try {
@@ -50,7 +53,7 @@ export async function cohortReportTool(input: CohortReportInput): Promise<{ rows
         buildSnapshot(url, input.window),
         buildDecayCurve(url, 12),
       ]);
-      const v = decideVerdict(snap, decay);
+      const v = decideVerdict(snap, decay, { ctrCurve: ctrCurve ?? undefined });
       rows.push({
         url: snap.meta.url,
         title: snap.meta.title,

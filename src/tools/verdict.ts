@@ -3,6 +3,7 @@ import { buildSnapshot, buildDecayCurve } from "../store/ingest.js";
 import { decideVerdict } from "../verdict/rules.js";
 import { saveVerdict } from "../store/duckdb.js";
 import { REASON_STRINGS } from "../verdict/reasons.js";
+import { fetchSiteCtrCurve } from "../adapters/gsc.js";
 import type { Verdict } from "../types.js";
 
 export const verdictInputSchema = z.object({
@@ -14,11 +15,12 @@ export const verdictInputSchema = z.object({
 export type VerdictInput = z.infer<typeof verdictInputSchema>;
 
 export async function verdictTool(input: VerdictInput): Promise<Verdict & { reason_strings: Record<string, string> }> {
-  const [snap, decay] = await Promise.all([
+  const [snap, decay, ctrCurve] = await Promise.all([
     buildSnapshot(input.url, input.window),
     buildDecayCurve(input.url, 12),
+    fetchSiteCtrCurve().catch(() => null),
   ]);
-  const v = decideVerdict(snap, decay);
+  const v = decideVerdict(snap, decay, { ctrCurve: ctrCurve ?? undefined });
   if (input.persist) {
     await saveVerdict(v.url, v.verdict, v.reasons, v.confidence);
   }

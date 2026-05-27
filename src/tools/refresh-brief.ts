@@ -2,6 +2,7 @@ import { z } from "zod";
 import { buildSnapshot, buildDecayCurve } from "../store/ingest.js";
 import { decideVerdict } from "../verdict/rules.js";
 import { REASON_STRINGS } from "../verdict/reasons.js";
+import { fetchSiteCtrCurve } from "../adapters/gsc.js";
 
 export const refreshBriefInputSchema = z.object({
   url: z.string().url().describe("Canonical URL of the post."),
@@ -11,11 +12,12 @@ export const refreshBriefInputSchema = z.object({
 export type RefreshBriefInput = z.infer<typeof refreshBriefInputSchema>;
 
 export async function refreshBriefTool(input: RefreshBriefInput): Promise<{ markdown: string }> {
-  const [snap, decay] = await Promise.all([
+  const [snap, decay, ctrCurve] = await Promise.all([
     buildSnapshot(input.url, input.window),
     buildDecayCurve(input.url, 12),
+    fetchSiteCtrCurve().catch(() => null),
   ]);
-  const v = decideVerdict(snap, decay);
+  const v = decideVerdict(snap, decay, { ctrCurve: ctrCurve ?? undefined });
 
   const lines: string[] = [];
   lines.push(`# Refresh brief: ${snap.meta.title}`);
@@ -58,6 +60,31 @@ export async function refreshBriefTool(input: RefreshBriefInput): Promise<{ mark
   }
   lines.push("");
 
+  if (snap.cannibalization && snap.cannibalization.length > 0) {
+    lines.push("## Competing URLs (cannibalization)");
+    for (const c of snap.cannibalization.slice(0, 5)) {
+      lines.push(`- "${c.query}" also ranks: ${c.competing_urls.slice(0, 3).join(", ")}`);
+    }
+    lines.push("");
+  }
+
+  if (snap.meta.headings && snap.meta.headings.length > 0) {
+    lines.push("## Page structure (H1/H2)");
+    for (const h of snap.meta.headings.slice(0, 15)) {
+      lines.push(`- ${h}`);
+    }
+    lines.push("");
+  }
+
+  if (snap.meta.excerpt && snap.meta.excerpt.length > 0) {
+    lines.push("## Page excerpt");
+    lines.push("");
+    lines.push(snap.meta.excerpt.slice(0, 2000));
+    lines.push("");
+    lines.push("> Compare the top queries above against this excerpt + the heading list to identify queries the page does not currently answer well.");
+    lines.push("");
+  }
+
   lines.push("## Suggested actions");
   for (const action of suggestActions(v.verdict, v.reasons)) {
     lines.push(`- ${action}`);
@@ -76,7 +103,7 @@ function suggestActions(verdict: string, reasons: string[]): string[] {
     out.push("Add a sub-section per top query that is not yet covered.");
     out.push("Embed one diagram or table to increase scannability.");
   } else if (verdict === "merge") {
-    out.push("Identify the cannibalising URL; 301 the weaker post into the stronger one.");
+    out.push("Identify the cannibalising URL (see 'Competing URLs' above); 301 the weaker post into the stronger one.");
   } else if (verdict === "double_down") {
     out.push("Plan 2-3 supporting cluster posts that internally link to this URL.");
     out.push("Pitch this URL to LLM-citation panels or syndicate widely.");
@@ -87,6 +114,9 @@ function suggestActions(verdict: string, reasons: string[]): string[] {
   }
   if (reasons.includes("citation_loss")) {
     out.push("Match the exact phrasing of the lost-citation query in the H1 or first paragraph.");
+  }
+  if (reasons.includes("duplicate_or_cannibalizing")) {
+    out.push("Resolve overlap before any other action: pick the canonical URL for each shared query, 301 the loser, and dedupe internal links.");
   }
   return out;
 }
