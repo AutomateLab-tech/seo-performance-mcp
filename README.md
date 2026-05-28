@@ -107,6 +107,43 @@ To add a brand-new platform: nothing to build - just point `POSTS_SITEMAP_URL` a
 | `posts.cite_loss` | LLM citations that dropped off for a given URL. Needs `CITATION_INTELLIGENCE_URL`. |
 | `gsc.quick_wins` | `(page, query)` pairs at positions 5-15 with low CTR - fastest title-rewrite wins. |
 
+## Use as a GitHub Action
+
+Run any of the tools on a cron from CI and post the output to a GitHub Issue, Discussion, or PR. The action is published on the GitHub Marketplace.
+
+```yaml
+- uses: AutomateLab-tech/seo-performance-mcp@v1
+  with:
+    tool: cohort.report
+    format: markdown
+    input: '{"window": 90, "min_age_days": 90, "limit": 20}'
+    gsc-service-account-json: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+    gsc-site-url: ${{ secrets.GSC_SITE_URL }}
+    posts-sitemap-url: ${{ secrets.POSTS_SITEMAP_URL }}
+```
+
+Outputs:
+
+| Output | Description |
+|---|---|
+| `result` | Tool output as a multi-line string (markdown or JSON, per `format`). |
+| `result-file` | Path of the file the tool output was written to. Hand to `peter-evans/create-issue-from-file` etc. |
+| `rows` | For `cohort.report` with `format: json` only: number of rows returned. |
+
+A complete weekly-audit workflow that opens a GitHub Issue with the cohort report is in [examples/weekly-cohort-report.yml](./examples/weekly-cohort-report.yml).
+
+## Use as a one-shot CLI
+
+The package also ships a `seo-perf-cli` bin so you can run a single tool without an MCP client:
+
+```bash
+npx -p @automatelab/seo-performance-mcp seo-perf-cli cohort.report \
+  --input '{"window": 90, "limit": 20}' \
+  --format markdown
+```
+
+Same env vars as the MCP server. `--format markdown` is supported for `cohort.report` and `posts.refresh_brief`; other tools fall back to fenced JSON.
+
 ## Companion skills + Cursor rule
 
 Three thin routing files ship in the repo so the LLM in your client knows *when* to reach for these tools:

@@ -1,0 +1,186 @@
+name: 'SEO Performance Report'
+description: 'Pull GSC + Matomo + GA4 + Clarity + AI citations into one verdict per blog post (refresh / expand / merge / kill / double_down / hold).'
+author: 'automatelab.tech'
+
+branding:
+  icon: 'bar-chart-2'
+  color: 'blue'
+
+inputs:
+  tool:
+    description: |
+      MCP tool to invoke. One of:
+        cohort.report, posts.list, posts.snapshot, posts.decay_curve,
+        posts.verdict, posts.refresh_brief, posts.cite_loss, gsc.quick_wins.
+    required: true
+    default: 'cohort.report'
+
+  input:
+    description: |
+      JSON string passed as the tool input. Example for cohort.report:
+        {"window": 90, "limit": 20, "min_age_days": 90}
+      Pass {} for tool defaults. See README for per-tool schemas.
+    required: false
+    default: '{}'
+
+  format:
+    description: 'Output format: json or markdown. Markdown is supported for cohort.report and posts.refresh_brief; other tools fall back to fenced JSON.'
+    required: false
+    default: 'markdown'
+
+  output-file:
+    description: 'Path the tool result is written to. Default: $RUNNER_TEMP/seo-perf-result.<ext>.'
+    required: false
+    default: ''
+
+  mcp-version:
+    description: 'Pinned npm version of @automatelab/seo-performance-mcp to run. Pin this for reproducible runs.'
+    required: false
+    default: '0.4.0'
+
+  node-version:
+    description: 'Node.js version to set up.'
+    required: false
+    default: '20'
+
+  # Adapter env passthrough. All optional; the verdict engine works on
+  # whichever slices are configured.
+  gsc-service-account-json:
+    description: 'Base64-encoded Google service-account JSON with Search Console read access.'
+    required: false
+    default: ''
+  gsc-site-url:
+    description: 'Search Console site URL, e.g. sc-domain:example.com or https://example.com/.'
+    required: false
+    default: ''
+  matomo-url:
+    description: 'Matomo instance URL.'
+    required: false
+    default: ''
+  matomo-token:
+    description: 'Matomo auth token (view access).'
+    required: false
+    default: ''
+  matomo-site-id:
+    description: 'Matomo idSite for the site to query.'
+    required: false
+    default: ''
+  ga4-property-id:
+    description: 'GA4 property ID (numeric, no G- prefix).'
+    required: false
+    default: ''
+  ga4-service-account-json:
+    description: 'Base64-encoded Google service-account JSON with GA4 Data API access.'
+    required: false
+    default: ''
+  clarity-project-id:
+    description: 'Microsoft Clarity project ID.'
+    required: false
+    default: ''
+  clarity-api-token:
+    description: 'Microsoft Clarity Data Export API token.'
+    required: false
+    default: ''
+  posts-sitemap-url:
+    description: 'XML sitemap URL used to enumerate posts. The primary platform-agnostic discovery path.'
+    required: false
+    default: ''
+  posts-list:
+    description: 'Optional JSON array overriding sitemap discovery: [{url, title?, published_at?, tags?, word_count?}, ...].'
+    required: false
+    default: ''
+  ghost-admin-api-url:
+    description: 'Optional Ghost Admin API base URL. Pair with ghost-admin-api-key for richer metadata.'
+    required: false
+    default: ''
+  ghost-admin-api-key:
+    description: 'Optional Ghost Admin API key (id:secret).'
+    required: false
+    default: ''
+  citation-intelligence-url:
+    description: 'Optional URL of a citation-intelligence MCP server to delegate AI-citation queries to.'
+    required: false
+    default: ''
+
+outputs:
+  result:
+    description: 'Tool output (markdown or JSON, depending on `format`). Multi-line.'
+    value: ${{ steps.run.outputs.result }}
+  result-file:
+    description: 'Path of the file the tool result was written to.'
+    value: ${{ steps.run.outputs.result-file }}
+  rows:
+    description: 'For cohort.report: number of rows returned. Empty for other tools.'
+    value: ${{ steps.run.outputs.rows }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Run seo-performance tool
+      id: run
+      shell: bash
+      env:
+        TOOL: ${{ inputs.tool }}
+        INPUT_JSON: ${{ inputs.input }}
+        FORMAT: ${{ inputs.format }}
+        OUTPUT_FILE: ${{ inputs.output-file }}
+        MCP_VERSION: ${{ inputs.mcp-version }}
+        GSC_SERVICE_ACCOUNT_JSON: ${{ inputs.gsc-service-account-json }}
+        GSC_SITE_URL: ${{ inputs.gsc-site-url }}
+        MATOMO_URL: ${{ inputs.matomo-url }}
+        MATOMO_TOKEN: ${{ inputs.matomo-token }}
+        MATOMO_SITE_ID: ${{ inputs.matomo-site-id }}
+        GA4_PROPERTY_ID: ${{ inputs.ga4-property-id }}
+        GA4_SERVICE_ACCOUNT_JSON: ${{ inputs.ga4-service-account-json }}
+        CLARITY_PROJECT_ID: ${{ inputs.clarity-project-id }}
+        CLARITY_API_TOKEN: ${{ inputs.clarity-api-token }}
+        POSTS_SITEMAP_URL: ${{ inputs.posts-sitemap-url }}
+        POSTS_LIST: ${{ inputs.posts-list }}
+        GHOST_ADMIN_API_URL: ${{ inputs.ghost-admin-api-url }}
+        GHOST_ADMIN_API_KEY: ${{ inputs.ghost-admin-api-key }}
+        CITATION_INTELLIGENCE_URL: ${{ inputs.citation-intelligence-url }}
+      run: |
+        set -euo pipefail
+
+        # Pick output path
+        if [ -z "${OUTPUT_FILE}" ]; then
+          if [ "${FORMAT}" = "markdown" ]; then
+            OUTPUT_FILE="${RUNNER_TEMP}/seo-perf-result.md"
+          else
+            OUTPUT_FILE="${RUNNER_TEMP}/seo-perf-result.json"
+          fi
+        fi
+
+        # Write tool input JSON to a file so we never interpolate untrusted
+        # data into the shell command.
+        INPUT_FILE="${RUNNER_TEMP}/seo-perf-input.json"
+        printf '%s' "${INPUT_JSON}" > "${INPUT_FILE}"
+
+        npx -y -p "@automatelab/seo-performance-mcp@${MCP_VERSION}" \
+          seo-perf-cli "${TOOL}" \
+          --input-file "${INPUT_FILE}" \
+          --format "${FORMAT}" \
+          --out "${OUTPUT_FILE}"
+
+        echo "result-file=${OUTPUT_FILE}" >> "${GITHUB_OUTPUT}"
+
+        # Multi-line output: use a heredoc delimiter unlikely to clash with content.
+        DELIM="SEO_PERF_EOF_$(date +%s%N)"
+        {
+          echo "result<<${DELIM}"
+          cat "${OUTPUT_FILE}"
+          echo "${DELIM}"
+        } >> "${GITHUB_OUTPUT}"
+
+        # Surface row count for cohort.report (best-effort, JSON path only).
+        if [ "${TOOL}" = "cohort.report" ] || [ "${TOOL}" = "cohort_report" ]; then
+          if [ "${FORMAT}" = "json" ]; then
+            ROWS=$(node -e "const d=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')); process.stdout.write(String((d.rows||[]).length));" "${OUTPUT_FILE}")
+            echo "rows=${ROWS}" >> "${GITHUB_OUTPUT}"
+          fi
+        fi

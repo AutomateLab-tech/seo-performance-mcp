@@ -1,0 +1,44 @@
+# Example workflow: run a weekly seo-performance cohort report and open a
+# GitHub Issue with the resulting markdown table. Copy into your repo at
+# .github/workflows/seo-performance.yml and fill in the secrets.
+
+name: Weekly SEO performance cohort
+
+on:
+  schedule:
+    # Mondays at 08:00 UTC. Adjust to your editorial cadence.
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+jobs:
+  cohort:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Run cohort report
+        id: report
+        uses: AutomateLab-tech/seo-performance-mcp@v1
+        with:
+          tool: cohort.report
+          format: markdown
+          input: |
+            {"window": 90, "min_age_days": 90, "limit": 20}
+          gsc-service-account-json: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+          gsc-site-url: ${{ secrets.GSC_SITE_URL }}
+          posts-sitemap-url: ${{ secrets.POSTS_SITEMAP_URL }}
+          # Optional extra slices. Leave unset to skip.
+          ga4-property-id: ${{ secrets.GA4_PROPERTY_ID }}
+          ga4-service-account-json: ${{ secrets.GA4_SERVICE_ACCOUNT_JSON }}
+          matomo-url: ${{ secrets.MATOMO_URL }}
+          matomo-token: ${{ secrets.MATOMO_TOKEN }}
+          matomo-site-id: ${{ secrets.MATOMO_SITE_ID }}
+
+      - name: Open issue with the cohort report
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Weekly SEO cohort report ${{ github.run_started_at }}"
+          content-filepath: ${{ steps.report.outputs.result-file }}
+          labels: |
+            seo
+            automated

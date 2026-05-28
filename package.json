@@ -1,6 +1,6 @@
 {
   "name": "@automatelab/seo-performance-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "mcpName": "io.github.AutomateLab-tech/seo-performance-mcp",
   "description": "Post-publish SEO performance MCP. Unifies Google Search Console, Matomo, GA4, Clarity, and AI-citation signals per URL and emits a verdict (refresh / expand / merge / kill / double_down / hold) per post with reason codes.",
   "license": "MIT",
@@ -18,7 +18,8 @@
   },
   "type": "module",
   "bin": {
-    "seo-performance-mcp": "dist/index.js"
+    "seo-performance-mcp": "dist/index.js",
+    "seo-perf-cli": "dist/cli.js"
   },
   "main": "dist/index.js",
   "scripts": {
