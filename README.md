@@ -2,7 +2,7 @@
 
 **Know which blog posts to refresh, expand, merge, or kill - without guessing.**
 
-A Model Context Protocol (MCP) server that turns your scattered SEO and analytics data into one clear verdict per URL. Plug it into Claude, Cursor, or any MCP-aware client and ask: "Which three posts should I update this week?" - and get an answer backed by hard numbers.
+A MCP server that turns your scattered SEO and analytics data into one clear verdict per URL. Plug it into Claude, Cursor, or any MCP-aware client and ask: "Which three posts should I update this week?" - and get an answer backed by hard numbers.
 
 ## What it does
 
