@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.AutomateLab-tech/seo-performance-mcp",
+  "description": "Post-publish SEO performance MCP. Unifies Google Search Console, Matomo, GA4, Clarity, and AI-citation signals per URL and emits a verdict (refresh / expand / merge / kill / double_down / hold) per post with reason codes.",
+  "title": "SEO Performance MCP",
+  "websiteUrl": "https://automatelab.tech/products/mcp/seo-performance-mcp/",
+  "repository": {
+    "url": "https://github.com/AutomateLab-tech/seo-performance-mcp",
+    "source": "github"
+  },
+  "version": "0.4.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@automatelab/seo-performance-mcp",
+      "version": "0.4.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
