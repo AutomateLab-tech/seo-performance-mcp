@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { urlVariants } from "../src/adapters/gsc.js";
+import { urlVariants, pageVariantFilterGroups } from "../src/adapters/gsc.js";
 
 describe("urlVariants", () => {
   it("yields the bare-slug variant for a deep canonical URL", () => {
@@ -34,5 +34,36 @@ describe("urlVariants", () => {
   it("returns the input unchanged for a non-parseable URL", () => {
     const out = urlVariants("not a url");
     expect(out).toEqual(["not a url"]);
+  });
+});
+
+describe("pageVariantFilterGroups", () => {
+  it("builds a single OR group matching every URL variant on the page dimension", () => {
+    const groups = pageVariantFilterGroups("https://example.com/blog/ai-coding/cursor-fix/");
+    expect(groups).toEqual([
+      {
+        groupType: "or",
+        filters: [
+          {
+            dimension: "page",
+            operator: "equals",
+            expression: "https://example.com/blog/ai-coding/cursor-fix/",
+          },
+          {
+            dimension: "page",
+            operator: "equals",
+            expression: "https://example.com/cursor-fix/",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("collapses to one filter for an already-bare-slug URL", () => {
+    const groups = pageVariantFilterGroups("https://example.com/cursor-fix/");
+    expect(groups[0].groupType).toBe("or");
+    expect(groups[0].filters).toEqual([
+      { dimension: "page", operator: "equals", expression: "https://example.com/cursor-fix/" },
+    ]);
   });
 });

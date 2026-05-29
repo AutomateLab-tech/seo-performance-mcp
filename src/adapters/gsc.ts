@@ -63,6 +63,25 @@ export interface GscQueryOptions {
   topQueriesLimit?: number;
 }
 
+// An OR dimensionFilterGroup matching the `page` dimension against any URL
+// variant. GSC frequently files a page under its bare last-segment slug rather
+// than the full canonical path (see urlVariants); an exact equals on the
+// canonical URL alone misses those impressions/clicks. Exported for tests.
+export function pageVariantFilterGroups(
+  url: string,
+): searchconsole_v1.Schema$ApiDimensionFilterGroup[] {
+  return [
+    {
+      groupType: "or",
+      filters: urlVariants(url).map((v) => ({
+        dimension: "page",
+        operator: "equals",
+        expression: v,
+      })),
+    },
+  ];
+}
+
 export async function fetchGscMetrics(opts: GscQueryOptions): Promise<GscMetrics> {
   const siteUrl = requireEnv("GSC_SITE_URL");
   const sc = client();
@@ -75,11 +94,7 @@ export async function fetchGscMetrics(opts: GscQueryOptions): Promise<GscMetrics
       startDate,
       endDate,
       dimensions: [],
-      dimensionFilterGroups: [
-        {
-          filters: [{ dimension: "page", operator: "equals", expression: opts.url }],
-        },
-      ],
+      dimensionFilterGroups: pageVariantFilterGroups(opts.url),
       rowLimit: 1,
     },
   });
@@ -97,11 +112,7 @@ export async function fetchGscMetrics(opts: GscQueryOptions): Promise<GscMetrics
       startDate,
       endDate,
       dimensions: ["query"],
-      dimensionFilterGroups: [
-        {
-          filters: [{ dimension: "page", operator: "equals", expression: opts.url }],
-        },
-      ],
+      dimensionFilterGroups: pageVariantFilterGroups(opts.url),
       rowLimit: opts.topQueriesLimit ?? 10,
     },
   });
@@ -131,11 +142,7 @@ export async function fetchGscWeekly(
       startDate,
       endDate,
       dimensions: ["date"],
-      dimensionFilterGroups: [
-        {
-          filters: [{ dimension: "page", operator: "equals", expression: url }],
-        },
-      ],
+      dimensionFilterGroups: pageVariantFilterGroups(url),
       rowLimit: weeks * 7 + 5,
     },
   });
@@ -272,11 +279,12 @@ export async function detectCannibalization(
     },
   });
 
+  const own = new Set(urlVariants(url));
   const competing = new Map<string, Set<string>>();
   for (const row of res.data.rows ?? []) {
     const q = String(row.keys?.[0] ?? "");
     const p = String(row.keys?.[1] ?? "");
-    if (!q || !p || p === url) continue;
+    if (!q || !p || own.has(p)) continue;
     if ((row.impressions ?? 0) < 10) continue;
     const set = competing.get(q) ?? new Set<string>();
     set.add(p);
