@@ -287,3 +287,22 @@ export async function detectCannibalization(
     .filter(([, urls]) => urls.size > 0)
     .map(([query, urls]) => ({ query, competing_urls: Array.from(urls) }));
 }
+
+// Slug variants for a canonical URL. Some platforms (Bing Webmaster Tools, and
+// occasionally GSC) file a page under its bare last-segment slug rather than its
+// full canonical path. Yields the canonical URL plus that bare-slug form so a
+// caller can try both. Used by the Bing adapter.
+export function urlVariants(url: string): string[] {
+  const set = new Set<string>([url]);
+  try {
+    const u = new URL(url);
+    const segments = u.pathname.split("/").filter(Boolean);
+    if (segments.length > 1) {
+      const bare = `${u.origin}/${segments[segments.length - 1]}/`;
+      set.add(bare);
+    }
+  } catch {
+    // Non-parseable URL: skip the variant.
+  }
+  return Array.from(set);
+}

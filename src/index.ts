@@ -13,6 +13,7 @@ import { refreshBriefTool, refreshBriefInputSchema } from "./tools/refresh-brief
 import { cohortReportTool, cohortReportInputSchema } from "./tools/cohort-report.js";
 import { citeLossTool, citeLossInputSchema } from "./tools/cite-loss.js";
 import { quickWinsTool, quickWinsInputSchema } from "./tools/quick-wins.js";
+import { bingQuickWinsTool, bingQuickWinsInputSchema } from "./tools/bing-quick-wins.js";
 
 import {
   listPostsOutputShape,
@@ -23,6 +24,7 @@ import {
   cohortReportOutputShape,
   citeLossOutputShape,
   quickWinsOutputShape,
+  bingQuickWinsOutputShape,
 } from "./output-schemas.js";
 
 import type { ToolError } from "./types.js";
@@ -65,6 +67,7 @@ function wrap<T>(handler: () => Promise<T>): Promise<ToolResponse> {
 //   posts.*    - per-post analysis (list / snapshot / decay / verdict / refresh_brief / cite_loss)
 //   cohort.*   - cross-post reports
 //   gsc.*      - direct GSC scans (quick_wins)
+//   bing.*     - direct Bing Webmaster Tools scans (quick_wins)
 
 server.registerTool(
   "posts.list",
@@ -187,6 +190,22 @@ server.registerTool(
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
   async (input) => wrap(() => quickWinsTool(input)),
+);
+
+server.registerTool(
+  "bing.quick_wins",
+  {
+    title: "Bing quick wins (positions 5-15)",
+    description: [
+      "Scan Bing Webmaster Tools for queries sitting in positions 5-15 with non-trivial impressions. Bing's index backs Copilot, ChatGPT search, and Perplexity grounding, so a Bing rank gap is an LLM-citation gap.",
+      "Query-level only: Bing has no single page+query API, so - unlike gsc.quick_wins, which returns (page, query) pairs - these carry no url. Sorted by impressions desc.",
+      "Requires BING_WEBMASTER_API_KEY (Bing Webmaster Tools -> Settings -> API Access). Best-effort: returns config_missing if unset.",
+    ].join("\n\n"),
+    inputSchema: bingQuickWinsInputSchema.shape,
+    outputSchema: bingQuickWinsOutputShape,
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+  },
+  async (input) => wrap(() => bingQuickWinsTool(input)),
 );
 
 // Prompts: canned multi-tool workflows. Discoverable in any MCP client

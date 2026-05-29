@@ -23,6 +23,17 @@ export interface GscMetrics {
   top_queries: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>;
 }
 
+// Bing Webmaster Tools metrics. Same shape as GscMetrics: a per-URL search
+// surface (impressions/clicks/CTR/position + top queries). Bing's index backs
+// Copilot, ChatGPT search, and Perplexity grounding.
+export interface BingMetrics {
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+  top_queries: Array<{ query: string; clicks: number; impressions: number; ctr: number; position: number }>;
+}
+
 export interface VisitMetrics {
   visits: number;
   unique_visitors: number;
@@ -54,6 +65,7 @@ export interface Snapshot {
   meta: PostMeta;
   window_days: 30 | 60 | 90;
   gsc: GscMetrics;
+  bing?: BingMetrics;
   matomo?: VisitMetrics;
   ga4?: VisitMetrics;
   clarity?: BehaviorMetrics;
