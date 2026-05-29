@@ -36,10 +36,14 @@ export const gscShape = {
   ),
 };
 
+// Bing Webmaster Tools metrics share the GSC per-URL shape.
+export const bingShape = gscShape;
+
 export const snapshotOutputShape = {
   meta: z.object(postMetaShape).extend({ updated_at: z.string().optional(), word_count: z.number().optional() }).passthrough(),
   window_days: z.number(),
   gsc: z.object(gscShape),
+  bing: z.object(bingShape).optional(),
   matomo: z
     .object({
       visits: z.number(),
@@ -147,6 +151,20 @@ export const quickWinsOutputShape = {
   wins: z.array(
     z.object({
       url: z.string(),
+      query: z.string(),
+      impressions: z.number(),
+      clicks: z.number(),
+      ctr: z.number(),
+      position: z.number(),
+    }),
+  ),
+};
+
+// Bing quick wins are query-level (no page attached): Bing's API has no single
+// page+query call, so unlike gsc.quick_wins these carry no url field.
+export const bingQuickWinsOutputShape = {
+  wins: z.array(
+    z.object({
       query: z.string(),
       impressions: z.number(),
       clicks: z.number(),

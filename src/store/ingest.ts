@@ -6,6 +6,7 @@ import {
   fetchGscWeekly,
   detectCannibalization,
 } from "../adapters/gsc.js";
+import { fetchBingMetrics } from "../adapters/bing.js";
 import { fetchMatomoMetrics } from "../adapters/matomo.js";
 import { fetchGa4Metrics } from "../adapters/ga4.js";
 import { fetchClarityMetrics } from "../adapters/clarity.js";
@@ -33,8 +34,9 @@ export async function buildSnapshot(url: string, windowDays: 30 | 60 | 90): Prom
   const meta = await getPostMeta(url);
   const path = pathFrom(url);
 
-  const [gsc, matomo, ga4, clarity, citations] = await Promise.all([
+  const [gsc, bing, matomo, ga4, clarity, citations] = await Promise.all([
     safe(() => fetchGscMetrics({ url, window: windowDays })),
+    safe(() => fetchBingMetrics(url, windowDays)),
     safe(() => fetchMatomoMetrics(url, windowDays)),
     safe(() => fetchGa4Metrics(path, windowDays)),
     safe(() => fetchClarityMetrics(path, windowDays)),
@@ -50,6 +52,7 @@ export async function buildSnapshot(url: string, windowDays: 30 | 60 | 90): Prom
     meta,
     window_days: windowDays,
     gsc: gsc ?? { clicks: 0, impressions: 0, ctr: 0, position: 0, top_queries: [] },
+    bing,
     matomo,
     ga4,
     clarity,
