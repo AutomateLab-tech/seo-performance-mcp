@@ -30,12 +30,12 @@ The MCP server returns one of those verdicts deterministically. Your job in this
 
 | User asks | Call |
 |---|---|
-| "audit my blog" / "what should I refresh this week" | `cohort.report` with `min_age_days=90`, then `posts.refresh_brief` on every refresh/expand/merge row |
-| "any quick title rewrites" / "low CTR pages" | `gsc.quick_wins` (window=90, positions 5-15) |
-| "is this post dying" / "show me the data for X" | `posts.snapshot` + `posts.decay_curve` + `posts.verdict` on the URL |
-| "give me a refresh brief for X" | `posts.refresh_brief` |
-| "did we lose any AI citations" | `posts.cite_loss` per URL, or use the `citation_loss_sweep` prompt |
-| "list my posts" | `posts.list` (sitemap-driven; no CMS plugin needed) |
+| "audit my blog" / "what should I refresh this week" | `cohort_report` with `min_age_days=90`, then `posts_refresh_brief` on every refresh/expand/merge row |
+| "any quick title rewrites" / "low CTR pages" | `gsc_quick_wins` (window=90, positions 5-15) |
+| "is this post dying" / "show me the data for X" | `posts_snapshot` + `posts_decay_curve` + `posts_verdict` on the URL |
+| "give me a refresh brief for X" | `posts_refresh_brief` |
+| "did we lose any AI citations" | `posts_cite_loss` per URL, or use the `citation_loss_sweep` prompt |
+| "list my posts" | `posts_list` (sitemap-driven; no CMS plugin needed) |
 
 ## Prompts available from the MCP server
 

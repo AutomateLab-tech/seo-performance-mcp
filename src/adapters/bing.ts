@@ -219,7 +219,7 @@ export interface BingQuickWin {
 
 // Site-wide Bing quick wins: queries on the edge of page 1 (positions 5-15 by
 // default) with real impressions. Bing has no single page+query call, so these
-// are query-level (no page attached) - unlike gsc.quick_wins which returns pairs.
+// are query-level (no page attached) - unlike gsc_quick_wins which returns pairs.
 export async function bingQuickWins(opts: {
   minPosition: number;
   maxPosition: number;

@@ -8,7 +8,7 @@ import { cohortReportTool } from "../src/tools/cohort-report.js";
 import { quickWinsTool } from "../src/tools/quick-wins.js";
 
 async function main(): Promise<void> {
-  console.log("=== gsc.quick_wins (positions 5-15, 90d, min 10 impressions) ===");
+  console.log("=== gsc_quick_wins (positions 5-15, 90d, min 10 impressions) ===");
   const qw = await quickWinsTool({ min_position: 5, max_position: 15, min_impressions: 10, window: 90, limit: 20 });
   console.log(JSON.stringify(qw.wins.slice(0, 10), null, 2));
 
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   for (const url of targets) {
     console.log(`\n========================================\n${url}\n========================================`);
 
-    console.log("\n--- posts.snapshot (90d) ---");
+    console.log("\n--- posts_snapshot (90d) ---");
     const snap = await snapshotTool({ url, window: 90, persist: false });
     console.log(JSON.stringify({
       title: snap.meta.title,
@@ -34,22 +34,22 @@ async function main(): Promise<void> {
       top_queries: snap.gsc.top_queries.slice(0, 5),
     }, null, 2));
 
-    console.log("\n--- posts.decay_curve (12 weeks) ---");
+    console.log("\n--- posts_decay_curve (12 weeks) ---");
     const decay = await decayCurveTool({ url, weeks: 12 });
     console.log(JSON.stringify({ trend: decay.trend, decay_pct: decay.decay_pct, bucket_count: decay.buckets.length }, null, 2));
 
-    console.log("\n--- posts.verdict ---");
+    console.log("\n--- posts_verdict ---");
     const v = await verdictTool({ url, window: 90, persist: false });
     console.log(JSON.stringify({ verdict: v.verdict, confidence: v.confidence, reasons: v.reasons }, null, 2));
   }
 
-  console.log("\n========================================\ncohort.report (top 3 pages)\n========================================");
+  console.log("\n========================================\ncohort_report (top 3 pages)\n========================================");
   const cohort = await cohortReportTool({ urls: targets, window: 90 });
   console.log(JSON.stringify(cohort.rows.map((r) => ({
     url: r.url, verdict: r.verdict, confidence: r.confidence, reasons: r.reasons, clicks: r.clicks, impressions: r.impressions, position: r.position,
   })), null, 2));
 
-  console.log("\n========================================\nposts.refresh_brief (first target)\n========================================");
+  console.log("\n========================================\nposts_refresh_brief (first target)\n========================================");
   const brief = await refreshBriefTool({ url: targets[0], window: 90 });
   console.log(brief.markdown);
 }

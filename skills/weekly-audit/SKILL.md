@@ -23,13 +23,13 @@ Read-only. Proposes edits. Never applies them. Wiring the apply path is up to yo
 
 Issue these in a single message:
 
-- `gsc.quick_wins` with `window=90, min_position=5, max_position=15, min_impressions=50, limit=20`
-- `cohort.report` with `min_age_days=90, window=30, limit=20`
-- `posts.list` with `limit=50, min_age_days=30` (input for the citation sweep)
+- `gsc_quick_wins` with `window=90, min_position=5, max_position=15, min_impressions=50, limit=20`
+- `cohort_report` with `min_age_days=90, window=30, limit=20`
+- `posts_list` with `limit=50, min_age_days=30` (input for the citation sweep)
 
 ### 2. Citation-loss sweep
 
-For the top 15 URLs from `posts.list` (oldest first), call `posts.cite_loss` per URL. Keep only URLs with `losses[].length > 0`. If `CITATION_INTELLIGENCE_URL` is unset, this step returns empty - skip it.
+For the top 15 URLs from `posts_list` (oldest first), call `posts_cite_loss` per URL. Keep only URLs with `losses[].length > 0`. If `CITATION_INTELLIGENCE_URL` is unset, this step returns empty - skip it.
 
 ### 3. Dedupe and rank
 
@@ -37,13 +37,13 @@ Merge by URL. A URL appearing in multiple lists gets a priority boost:
 
 | Signal | Weight |
 |---|---|
-| `cohort.report` verdict = `refresh` or `merge` | 3 |
-| `gsc.quick_wins` has any query at 0% CTR | 2 |
-| `posts.cite_loss` has losses | 2 |
-| `cohort.report` verdict = `expand` or `double_down` | 1 |
-| `gsc.quick_wins` low-CTR only | 1 |
+| `cohort_report` verdict = `refresh` or `merge` | 3 |
+| `gsc_quick_wins` has any query at 0% CTR | 2 |
+| `posts_cite_loss` has losses | 2 |
+| `cohort_report` verdict = `expand` or `double_down` | 1 |
+| `gsc_quick_wins` low-CTR only | 1 |
 
-Sort by total weight desc, then by `cohort.report` confidence desc. Take top 5.
+Sort by total weight desc, then by `cohort_report` confidence desc. Take top 5.
 
 ### 4. Per top-5 URL, propose one concrete edit
 
@@ -53,7 +53,7 @@ Pick the single highest-lift edit for the dominant signal:
 - **`refresh` verdict with `decay_30d_over_30pct`** -> propose a new H2 + intro paragraph targeting the top GSC query.
 - **`merge` verdict** -> name the sibling URL and recommend a 301 target.
 - **Citation loss** -> propose H1 + lead-paragraph phrasing that mirrors the lost query verbatim (LLMs cite phrases, not paraphrases).
-- **`expand` verdict** -> name 3 FAQ questions to add (pull from `posts.snapshot` top queries).
+- **`expand` verdict** -> name 3 FAQ questions to add (pull from `posts_snapshot` top queries).
 
 ### 5. Output format
 
@@ -93,5 +93,5 @@ If a proposed edit violates a rule, rewrite it before showing.
 ## Known limitations
 
 - **Sitemap `<lastmod>` is unreliable** if a recent deploy reset all values. For accurate age filtering, configure Ghost (or `POSTS_LIST`) so per-URL `getPostMeta` has a real source.
-- **Verdict engine needs >=90-day-old posts** to fire useful verdicts. New sites get mostly `hold/fresh_post_too_young`. Lean on `gsc.quick_wins` (no age filter) until the cohort matures.
+- **Verdict engine needs >=90-day-old posts** to fire useful verdicts. New sites get mostly `hold/fresh_post_too_young`. Lean on `gsc_quick_wins` (no age filter) until the cohort matures.
 - **Citation-loss step is a no-op without `CITATION_INTELLIGENCE_URL`.** Set it when ready; until then the sweep contributes nothing to ranking.

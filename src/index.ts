@@ -70,7 +70,7 @@ function wrap<T>(handler: () => Promise<T>): Promise<ToolResponse> {
 //   bing.*     - direct Bing Webmaster Tools scans (quick_wins)
 
 server.registerTool(
-  "posts.list",
+  "posts_list",
   {
     title: "List posts from any platform",
     description: [
@@ -86,7 +86,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "posts.snapshot",
+  "posts_snapshot",
   {
     title: "Unified per-URL snapshot",
     description: [
@@ -102,7 +102,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "posts.decay_curve",
+  "posts_decay_curve",
   {
     title: "Weekly GSC decay curve",
     description: [
@@ -117,7 +117,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "posts.verdict",
+  "posts_verdict",
   {
     title: "Verdict per post (refresh / expand / merge / kill / double_down / hold)",
     description: [
@@ -133,7 +133,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "posts.refresh_brief",
+  "posts_refresh_brief",
   {
     title: "Refresh brief (markdown) per post",
     description: [
@@ -148,7 +148,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "cohort.report",
+  "cohort_report",
   {
     title: "Cohort report across posts",
     description: [
@@ -163,7 +163,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "posts.cite_loss",
+  "posts_cite_loss",
   {
     title: "AI-citation losses per URL",
     description: [
@@ -178,7 +178,7 @@ server.registerTool(
 );
 
 server.registerTool(
-  "gsc.quick_wins",
+  "gsc_quick_wins",
   {
     title: "GSC quick wins (positions 5-15)",
     description: [
@@ -193,12 +193,12 @@ server.registerTool(
 );
 
 server.registerTool(
-  "bing.quick_wins",
+  "bing_quick_wins",
   {
     title: "Bing quick wins (positions 5-15)",
     description: [
       "Scan Bing Webmaster Tools for queries sitting in positions 5-15 with non-trivial impressions. Bing's index backs Copilot, ChatGPT search, and Perplexity grounding, so a Bing rank gap is an LLM-citation gap.",
-      "Query-level only: Bing has no single page+query API, so - unlike gsc.quick_wins, which returns (page, query) pairs - these carry no url. Sorted by impressions desc.",
+      "Query-level only: Bing has no single page+query API, so - unlike gsc_quick_wins, which returns (page, query) pairs - these carry no url. Sorted by impressions desc.",
       "Requires BING_WEBMASTER_API_KEY (Bing Webmaster Tools -> Settings -> API Access). Best-effort: returns config_missing if unset.",
     ].join("\n\n"),
     inputSchema: bingQuickWinsInputSchema.shape,
@@ -215,7 +215,7 @@ server.registerPrompt(
   "audit_cohort",
   {
     title: "Audit a cohort of posts",
-    description: "Run cohort.report on posts >=90 days old, then generate refresh briefs for every URL whose verdict is refresh / expand / merge.",
+    description: "Run cohort_report on posts >=90 days old, then generate refresh briefs for every URL whose verdict is refresh / expand / merge.",
   },
   () => ({
     messages: [
@@ -226,8 +226,8 @@ server.registerPrompt(
           text: [
             "Run the seo-performance MCP cohort audit:",
             "",
-            "1. Call `cohort.report` with `min_age_days=90`, `window=30`, `limit=20`.",
-            "2. For every row where verdict is one of refresh / expand / merge / double_down, call `posts.refresh_brief` on that URL.",
+            "1. Call `cohort_report` with `min_age_days=90`, `window=30`, `limit=20`.",
+            "2. For every row where verdict is one of refresh / expand / merge / double_down, call `posts_refresh_brief` on that URL.",
             "3. Output a single markdown digest, sorted by verdict priority then confidence, with the brief inlined per URL.",
             "4. At the end, recommend the top 3 URLs to act on this week.",
           ].join("\n"),
@@ -252,8 +252,8 @@ server.registerPrompt(
           text: [
             "Find SERP quick wins via the seo-performance MCP:",
             "",
-            "1. Call `gsc.quick_wins` with `window=90`, `min_position=5`, `max_position=15`, `min_impressions=50`.",
-            "2. Group by URL. For each URL with at least one query at 0% CTR, call `posts.snapshot` to confirm the top-query set.",
+            "1. Call `gsc_quick_wins` with `window=90`, `min_position=5`, `max_position=15`, `min_impressions=50`.",
+            "2. Group by URL. For each URL with at least one query at 0% CTR, call `posts_snapshot` to confirm the top-query set.",
             "3. For each URL, suggest a meta_title and H1 rewrite that incorporates the exact phrasing of the highest-impression query verbatim (under 60 chars for the SERP title).",
             "4. Output a table: URL | top query | current position | current CTR | suggested meta_title.",
           ].join("\n"),
@@ -278,9 +278,9 @@ server.registerPrompt(
           text: [
             "Sweep for AI citation losses via the seo-performance MCP:",
             "",
-            "1. Get a candidate URL list: either `posts.list` (limit 50) or an explicit `urls[]` you already have.",
-            "2. For each URL, call `posts.cite_loss`. Keep only URLs with at least one entry in `losses[]`.",
-            "3. For those URLs, call `posts.refresh_brief`.",
+            "1. Get a candidate URL list: either `posts_list` (limit 50) or an explicit `urls[]` you already have.",
+            "2. For each URL, call `posts_cite_loss`. Keep only URLs with at least one entry in `losses[]`.",
+            "3. For those URLs, call `posts_refresh_brief`.",
             "4. In the digest, highlight the lost-citation queries and recommend exact H1/first-paragraph phrasing that mirrors each lost query.",
           ].join("\n"),
         },

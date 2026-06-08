@@ -20,7 +20,7 @@ jobs:
         id: report
         uses: AutomateLab-tech/seo-performance-mcp@v1
         with:
-          tool: cohort.report
+          tool: cohort_report
           format: markdown
           input: |
             {"window": 90, "min_age_days": 90, "limit": 20}

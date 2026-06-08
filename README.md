@@ -98,14 +98,14 @@ To add a brand-new platform: nothing to build - just point `POSTS_SITEMAP_URL` a
 
 | Tool | What it returns |
 |---|---|
-| `posts.list` | Posts with `{url, title, age_days, tags}` from sitemap, Ghost, or your `POSTS_LIST`. |
-| `posts.snapshot` | Per-URL unified rollup for a 30/60/90-day window: GSC + Matomo + GA4 + Clarity + citations + meta. |
-| `posts.decay_curve` | Weekly GSC clicks/impressions/position buckets + a `decay/plateau/growth` trend label. |
-| `posts.verdict` | Verdict (`refresh/expand/merge/kill/double_down/hold`) + reason codes + 0-1 confidence. |
-| `posts.refresh_brief` | Markdown brief for a human or downstream LLM editor: numbers, top queries, suggested actions. |
-| `cohort.report` | Cohort verdict table sorted by priority + confidence. "Which three posts should I refresh this week?" |
-| `posts.cite_loss` | LLM citations that dropped off for a given URL. Needs `CITATION_INTELLIGENCE_URL`. |
-| `gsc.quick_wins` | `(page, query)` pairs at positions 5-15 with low CTR - fastest title-rewrite wins. |
+| `posts_list` | Posts with `{url, title, age_days, tags}` from sitemap, Ghost, or your `POSTS_LIST`. |
+| `posts_snapshot` | Per-URL unified rollup for a 30/60/90-day window: GSC + Matomo + GA4 + Clarity + citations + meta. |
+| `posts_decay_curve` | Weekly GSC clicks/impressions/position buckets + a `decay/plateau/growth` trend label. |
+| `posts_verdict` | Verdict (`refresh/expand/merge/kill/double_down/hold`) + reason codes + 0-1 confidence. |
+| `posts_refresh_brief` | Markdown brief for a human or downstream LLM editor: numbers, top queries, suggested actions. |
+| `cohort_report` | Cohort verdict table sorted by priority + confidence. "Which three posts should I refresh this week?" |
+| `posts_cite_loss` | LLM citations that dropped off for a given URL. Needs `CITATION_INTELLIGENCE_URL`. |
+| `gsc_quick_wins` | `(page, query)` pairs at positions 5-15 with low CTR - fastest title-rewrite wins. |
 
 ## Use as a GitHub Action
 
@@ -114,7 +114,7 @@ Run any of the tools on a cron from CI and post the output to a GitHub Issue, Di
 ```yaml
 - uses: AutomateLab-tech/seo-performance-mcp@v1
   with:
-    tool: cohort.report
+    tool: cohort_report
     format: markdown
     input: '{"window": 90, "min_age_days": 90, "limit": 20}'
     gsc-service-account-json: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
@@ -128,7 +128,7 @@ Outputs:
 |---|---|
 | `result` | Tool output as a multi-line string (markdown or JSON, per `format`). |
 | `result-file` | Path of the file the tool output was written to. Hand to `peter-evans/create-issue-from-file` etc. |
-| `rows` | For `cohort.report` with `format: json` only: number of rows returned. |
+| `rows` | For `cohort_report` with `format: json` only: number of rows returned. |
 
 A complete weekly-audit workflow that opens a GitHub Issue with the cohort report is in [examples/weekly-cohort-report.yml](./examples/weekly-cohort-report.yml).
 
@@ -137,19 +137,19 @@ A complete weekly-audit workflow that opens a GitHub Issue with the cohort repor
 The package also ships a `seo-perf-cli` bin so you can run a single tool without an MCP client:
 
 ```bash
-npx -p @automatelab/seo-performance-mcp seo-perf-cli cohort.report \
+npx -p @automatelab/seo-performance-mcp seo-perf-cli cohort_report \
   --input '{"window": 90, "limit": 20}' \
   --format markdown
 ```
 
-Same env vars as the MCP server. `--format markdown` is supported for `cohort.report` and `posts.refresh_brief`; other tools fall back to fenced JSON.
+Same env vars as the MCP server. `--format markdown` is supported for `cohort_report` and `posts_refresh_brief`; other tools fall back to fenced JSON.
 
 ## Companion skills + Cursor rule
 
 Three thin routing files ship in the repo so the LLM in your client knows *when* to reach for these tools:
 
 - `skills/seo-performance/SKILL.md` - tool-routing skill. Drop into `~/.claude/skills/seo-performance/` (or `.claude/skills/` per project) to auto-load in Claude Code. Routes a single question to the right tool.
-- `skills/weekly-audit/SKILL.md` - one-shot weekly audit playbook. Composes `gsc.quick_wins` + `cohort.report` + `posts.cite_loss` into a deduped, cross-signal ranked digest with proposed edits per URL. Drop in alongside the routing skill.
+- `skills/weekly-audit/SKILL.md` - one-shot weekly audit playbook. Composes `gsc_quick_wins` + `cohort_report` + `posts_cite_loss` into a deduped, cross-signal ranked digest with proposed edits per URL. Drop in alongside the routing skill.
 - `cursor/rules/seo-performance.mdc` - copy to `.cursor/rules/seo-performance.mdc` in any Cursor workspace.
 
 All optional. The MCP server works without them; they just shorten the "which tool do I call" round-trip.
@@ -160,9 +160,9 @@ The server exposes three prompts that bundle the playbook. Any MCP client (Claud
 
 | Prompt | What it runs |
 |---|---|
-| `audit_cohort` | `cohort.report` on posts >=90d, then `posts.refresh_brief` per refresh/expand/merge row. The weekly audit. |
-| `find_quick_wins` | `gsc.quick_wins` (positions 5-15) + per-URL `posts.snapshot`, then proposes verbatim-query meta_title rewrites. |
-| `citation_loss_sweep` | `posts.cite_loss` per URL, refresh_brief for any with losses, targeted H1/lead phrasing recommendations. |
+| `audit_cohort` | `cohort_report` on posts >=90d, then `posts_refresh_brief` per refresh/expand/merge row. The weekly audit. |
+| `find_quick_wins` | `gsc_quick_wins` (positions 5-15) + per-URL `posts_snapshot`, then proposes verbatim-query meta_title rewrites. |
+| `citation_loss_sweep` | `posts_cite_loss` per URL, refresh_brief for any with losses, targeted H1/lead phrasing recommendations. |
 
 ## Verdict engine
 

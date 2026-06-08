@@ -161,7 +161,7 @@ export const quickWinsOutputShape = {
 };
 
 // Bing quick wins are query-level (no page attached): Bing's API has no single
-// page+query call, so unlike gsc.quick_wins these carry no url field.
+// page+query call, so unlike gsc_quick_wins these carry no url field.
 export const bingQuickWinsOutputShape = {
   wins: z.array(
     z.object({

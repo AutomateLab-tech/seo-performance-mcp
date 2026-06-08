@@ -10,21 +10,21 @@ inputs:
   tool:
     description: |
       MCP tool to invoke. One of:
-        cohort.report, posts.list, posts.snapshot, posts.decay_curve,
-        posts.verdict, posts.refresh_brief, posts.cite_loss, gsc.quick_wins.
+        cohort_report, posts_list, posts_snapshot, posts_decay_curve,
+        posts_verdict, posts_refresh_brief, posts_cite_loss, gsc_quick_wins.
     required: true
-    default: 'cohort.report'
+    default: 'cohort_report'
 
   input:
     description: |
-      JSON string passed as the tool input. Example for cohort.report:
+      JSON string passed as the tool input. Example for cohort_report:
         {"window": 90, "limit": 20, "min_age_days": 90}
       Pass {} for tool defaults. See README for per-tool schemas.
     required: false
     default: '{}'
 
   format:
-    description: 'Output format: json or markdown. Markdown is supported for cohort.report and posts.refresh_brief; other tools fall back to fenced JSON.'
+    description: 'Output format: json or markdown. Markdown is supported for cohort_report and posts_refresh_brief; other tools fall back to fenced JSON.'
     required: false
     default: 'markdown'
 
@@ -110,7 +110,7 @@ outputs:
     description: 'Path of the file the tool result was written to.'
     value: ${{ steps.run.outputs.result-file }}
   rows:
-    description: 'For cohort.report: number of rows returned. Empty for other tools.'
+    description: 'For cohort_report: number of rows returned. Empty for other tools.'
     value: ${{ steps.run.outputs.rows }}
 
 runs:
@@ -177,8 +177,8 @@ runs:
           echo "${DELIM}"
         } >> "${GITHUB_OUTPUT}"
 
-        # Surface row count for cohort.report (best-effort, JSON path only).
-        if [ "${TOOL}" = "cohort.report" ] || [ "${TOOL}" = "cohort_report" ]; then
+        # Surface row count for cohort_report (best-effort, JSON path only).
+        if [ "${TOOL}" = "cohort_report" ] || [ "${TOOL}" = "cohort_report" ]; then
           if [ "${FORMAT}" = "json" ]; then
             ROWS=$(node -e "const d=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')); process.stdout.write(String((d.rows||[]).length));" "${OUTPUT_FILE}")
             echo "rows=${ROWS}" >> "${GITHUB_OUTPUT}"

@@ -21,14 +21,14 @@ interface ToolEntry {
 }
 
 const TOOLS: Record<string, ToolEntry> = {
-  "posts.list": { schema: listPostsInputSchema, fn: listPostsTool },
-  "posts.snapshot": { schema: snapshotInputSchema, fn: snapshotTool },
-  "posts.decay_curve": { schema: decayCurveInputSchema, fn: decayCurveTool },
-  "posts.verdict": { schema: verdictInputSchema, fn: verdictTool },
-  "posts.refresh_brief": { schema: refreshBriefInputSchema, fn: refreshBriefTool },
-  "cohort.report": { schema: cohortReportInputSchema, fn: cohortReportTool },
-  "posts.cite_loss": { schema: citeLossInputSchema, fn: citeLossTool },
-  "gsc.quick_wins": { schema: quickWinsInputSchema, fn: quickWinsTool },
+  "posts_list": { schema: listPostsInputSchema, fn: listPostsTool },
+  "posts_snapshot": { schema: snapshotInputSchema, fn: snapshotTool },
+  "posts_decay_curve": { schema: decayCurveInputSchema, fn: decayCurveTool },
+  "posts_verdict": { schema: verdictInputSchema, fn: verdictTool },
+  "posts_refresh_brief": { schema: refreshBriefInputSchema, fn: refreshBriefTool },
+  "cohort_report": { schema: cohortReportInputSchema, fn: cohortReportTool },
+  "posts_cite_loss": { schema: citeLossInputSchema, fn: citeLossTool },
+  "gsc_quick_wins": { schema: quickWinsInputSchema, fn: quickWinsTool },
 };
 
 type Format = "json" | "markdown";
@@ -90,7 +90,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 }
 
 function normalizeToolName(name: string): string {
-  // Accept either canonical dot.snake_case (posts.refresh_brief) or the all-snake
+  // Accept either canonical dot.snake_case (posts_refresh_brief) or the all-snake
   // variant (posts_refresh_brief) by promoting the first underscore to a dot when
   // the name lacks one.
   if (name.includes(".") || !(name in TOOLS)) {
@@ -111,7 +111,7 @@ function printHelp(): void {
     `seo-perf-cli <tool> [options]\n\n` +
       `Wraps every seo-performance MCP tool as a one-shot CLI call. Same env vars\n` +
       `as the MCP server. Output is JSON unless --format markdown is set (markdown\n` +
-      `is supported for cohort.report and posts.refresh_brief).\n\n` +
+      `is supported for cohort_report and posts_refresh_brief).\n\n` +
       `Tools:\n${tools}\n\n` +
       `Options:\n` +
       `  -i, --input   <json>            Tool input as a JSON string. Default: {}\n` +
@@ -120,9 +120,9 @@ function printHelp(): void {
       `  -o, --out     <path>            Write output to file (in addition to stdout).\n` +
       `  -h, --help                      Show this help.\n\n` +
       `Examples:\n` +
-      `  seo-perf-cli cohort.report --input '{"window":90,"limit":20}' --format markdown\n` +
-      `  seo-perf-cli posts.refresh_brief --input '{"url":"https://example.com/x"}' --format markdown\n` +
-      `  seo-perf-cli gsc.quick_wins --input '{"window":90}'\n`,
+      `  seo-perf-cli cohort_report --input '{"window":90,"limit":20}' --format markdown\n` +
+      `  seo-perf-cli posts_refresh_brief --input '{"url":"https://example.com/x"}' --format markdown\n` +
+      `  seo-perf-cli gsc_quick_wins --input '{"window":90}'\n`,
   );
 }
 
@@ -151,10 +151,10 @@ function renderCohortMarkdown(result: unknown): string {
 }
 
 function renderMarkdown(toolName: string, result: unknown): string {
-  if (toolName === "posts.refresh_brief") {
+  if (toolName === "posts_refresh_brief") {
     return (result as { markdown?: string }).markdown ?? "";
   }
-  if (toolName === "cohort.report") {
+  if (toolName === "cohort_report") {
     return renderCohortMarkdown(result);
   }
   // Fall back to fenced JSON for tools without a dedicated renderer.
