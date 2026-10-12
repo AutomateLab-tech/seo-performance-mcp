@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { readFileSync as readMcpPackage } from "node:fs";
+const MCP_PACKAGE_VERSION: string = JSON.parse(readMcpPackage(new URL("../package.json", import.meta.url), "utf8")).version;
 // seo-performance MCP - entrypoint.
 // All logging goes to stderr. stdout is reserved for JSON-RPC transport.
 
@@ -31,7 +33,7 @@ import type { ToolError } from "./types.js";
 
 const server = new McpServer({
   name: "@automatelab/seo-performance-mcp",
-  version: "0.1.0",
+  version: MCP_PACKAGE_VERSION,
 });
 
 type ToolResponse = {

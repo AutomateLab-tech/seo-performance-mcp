@@ -193,3 +193,7 @@ npm test           # vitest
 ## License
 
 MIT
+
+## Maintenance and verification
+
+See [the maintenance guide](docs/maintenance-guide.md) for interpretation limits, current tool names where applicable, and reproducible verification.
